@@ -13,7 +13,7 @@ Parameters:
   GitRepositoryUrl:
     Description: URL of the public Git repository (e.g., https://github.com/username/repository.git)
     Type: String
-    Default: 'https://github.com/aws-solutions-library-samples/guidance-for-medialake'
+    Default: 'https://github.com/fleandro1/guidance-for-medialake-on-aws'
 
   S3PresignedURL:
     Description: Presigned URL for downloading the CDK code ZIP (if S3PresignedURL source type is selected)
@@ -425,7 +425,7 @@ Resources:
         Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         EnvironmentVariables:
           - Name: GIT_REPOSITORY_URL
-            Value: !Ref GitRepositoryUrl
+            Value: https://github.com/fleandro1/guidance-for-medialake-on-aws
           - Name: GIT_BRANCH
             Value: main
       Source:
