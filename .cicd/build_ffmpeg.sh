@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Pin to a specific FFmpeg build version to avoid Lambda layer size limit issues.
-# Version: autobuild-2026-01-12-13-00 (133MB compressed)
-FFMPEG_VERSION="autobuild-2026-01-12-13-00"
-FFMPEG_FILENAME="ffmpeg-N-122425-g21a3e44fbe-linux64-gpl.tar.xz"
-FFMPEG_SHA256="8b4c4bbd919542efaa780eea5ec385d56697906e72e5e27bbfb676b648934a41"  # pragma: allowlist secret
+# Version: autobuild-2025-11-30-12-53 (131MB compressed)
+FFMPEG_VERSION="autobuild-2025-11-30-12-53"
+FFMPEG_FILENAME="ffmpeg-N-121938-g2456a39581-linux64-gpl.tar.xz"
+FFMPEG_SHA256="fec46f7984352b988bda79be0521964a5148fecf7aa13db4e18a4383aa88e87f"  # pragma: allowlist secret
 
 BASE_DIR=$(pwd)
 TEMP_DIR=$(mktemp -d)
