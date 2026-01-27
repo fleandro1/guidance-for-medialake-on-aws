@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+    <Name>AWS Media Lake</Name>
+    <Description>Browse, search, and import assets from AWS Media Lake into DaVinci Resolve</Description>
+    <Version>1.0.0</Version>
+    <Author>AWS Solutions</Author>
+    <Id>com.aws.medialake.resolve</Id>
+    <Type>Script</Type>
+    <ScriptPath>MediaLake.py</ScriptPath>
+</manifest>
