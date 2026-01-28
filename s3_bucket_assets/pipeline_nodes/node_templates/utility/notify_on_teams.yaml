@@ -37,8 +37,10 @@ actions:
         schema:
           type: string
           description: Microsoft Teams webhook URL (overrides environment variable if provided)
+    x-requestMapping: processor/notify_on_teams/notify/
+    x-responseMapping: processor/notify_on_teams/notify/
     connections:
       incoming:
-        type: [image, video, audio, any]
+        type: [any]
       outgoing:
-        type: [image, video, audio, any]
+        type: [any]
