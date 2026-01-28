@@ -2,7 +2,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import boto3
 from aws_lambda_powertools import Logger, Metrics, Tracer
@@ -80,6 +80,7 @@ request_schema = {
         "content_type": {"type": "string"},
         "file_size": {"type": "integer", "minimum": 1},
         "path": {"type": "string", "default": ""},
+        "metadata": {"type": "object"},
     },
     "required": ["connector_id", "filename", "content_type", "file_size"],
 }
@@ -91,6 +92,7 @@ class RequestBody(BaseModel):
     content_type: str
     file_size: int = Field(gt=0)
     path: str = ""
+    metadata: Dict[str, str] = {}
 
     @validator("filename")
     @classmethod
@@ -304,7 +306,7 @@ def is_multipart_upload_required(file_size: int) -> bool:
 
 @tracer.capture_method
 def generate_presigned_post_url(
-    bucket: str, key: str, content_type: str, expiration: int = DEFAULT_EXPIRATION
+    bucket: str, key: str, content_type: str, custom_metadata: Optional[Dict[str, str]] = None, expiration: int = DEFAULT_EXPIRATION
 ) -> Dict[str, Any]:
     """Generate a presigned POST URL for the S3 object using region-aware S3 client."""
     try:
@@ -318,12 +320,24 @@ def generate_presigned_post_url(
             {"Content-Type": content_type},
         ]
 
+        fields = {
+            "Content-Type": content_type,
+        }
+
+        # Add custom metadata as S3 object metadata (x-amz-meta- prefix)
+        if custom_metadata:
+            for meta_key, meta_value in custom_metadata.items():
+                # S3 metadata keys must be lowercase and use x-amz-meta- prefix
+                s3_meta_key = f"x-amz-meta-{meta_key.lower()}"
+                fields[s3_meta_key] = str(meta_value)
+                conditions.append({s3_meta_key: str(meta_value)})
+            
+            logger.info(f"Added {len(custom_metadata)} custom metadata fields to presigned POST")
+
         presigned_post = s3_client.generate_presigned_post(
             Bucket=bucket,
             Key=key,
-            Fields={
-                "Content-Type": content_type,
-            },
+            Fields=fields,
             Conditions=conditions,
             ExpiresIn=expiration,
         )
@@ -558,7 +572,7 @@ def lambda_handler(
 
             # For single-part uploads, generate a presigned POST URL
             presigned_post = generate_presigned_post_url(
-                bucket, key, request.content_type
+                bucket, key, request.content_type, request.metadata
             )
 
             logger.info(

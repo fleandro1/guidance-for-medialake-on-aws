@@ -1452,6 +1452,33 @@ class AssetProcessor:
         last_modified = s3_response.get("LastModified", datetime.utcnow()).isoformat()
         content_type = s3_response.get("ContentType", "")
 
+        # Extract custom metadata from S3 object metadata
+        s3_metadata = s3_response.get("Metadata", {})
+        custom_metadata = {}
+        
+        # S3 stores metadata with lowercase keys, so we need to extract them
+        for key_name, value in s3_metadata.items():
+            # S3 metadata keys are already without the x-amz-meta- prefix when retrieved
+            custom_metadata[key_name] = value
+        
+        if custom_metadata:
+            logger.info(f"Extracted {len(custom_metadata)} custom metadata fields from S3 object")
+
+        metadata_structure = {
+            "ObjectMetadata": {
+                "ExtractedDate": datetime.utcnow().isoformat(),
+                "S3": {
+                    "Metadata": s3_metadata,
+                    "ContentType": content_type,
+                    "LastModified": last_modified,
+                },
+            }
+        }
+        
+        # Add CustomMetadata if present
+        if custom_metadata:
+            metadata_structure["CustomMetadata"] = custom_metadata
+
         return {
             "StorageInfo": {
                 "PrimaryLocation": {
@@ -1474,16 +1501,7 @@ class AssetProcessor:
                     },
                 }
             },
-            "Metadata": {
-                "ObjectMetadata": {
-                    "ExtractedDate": datetime.utcnow().isoformat(),
-                    "S3": {
-                        "Metadata": s3_response.get("Metadata", {}),
-                        "ContentType": content_type,
-                        "LastModified": last_modified,
-                    },
-                }
-            },
+            "Metadata": metadata_structure,
         }
 
     @tracer.capture_method
