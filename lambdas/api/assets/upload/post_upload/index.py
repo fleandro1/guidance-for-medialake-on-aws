@@ -327,7 +327,6 @@ def generate_presigned_post_url(
         # Add custom metadata as S3 object metadata (x-amz-meta- prefix)
         if custom_metadata:
             for meta_key, meta_value in custom_metadata.items():
-                # S3 metadata keys must be lowercase and use x-amz-meta- prefix
                 s3_meta_key = f"x-amz-meta-{meta_key.lower()}"
                 fields[s3_meta_key] = str(meta_value)
                 conditions.append({s3_meta_key: str(meta_value)})

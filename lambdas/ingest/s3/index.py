@@ -1456,9 +1456,7 @@ class AssetProcessor:
         s3_metadata = s3_response.get("Metadata", {})
         custom_metadata = {}
         
-        # S3 stores metadata with lowercase keys, so we need to extract them
         for key_name, value in s3_metadata.items():
-            # S3 metadata keys are already without the x-amz-meta- prefix when retrieved
             custom_metadata[key_name] = value
         
         if custom_metadata:
