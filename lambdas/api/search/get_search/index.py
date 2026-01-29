@@ -333,6 +333,26 @@ def build_search_query(params: SearchParams) -> Dict:
                         }
                     }
                 },
+                # Search CustomMetadata fields (user-provided metadata at upload time)
+                {
+                    "multi_match": {
+                        "query": clean_query,
+                        "fields": ["Metadata.CustomMetadata.*"],
+                        "type": "best_fields",
+                        "boost": 1.5,
+                        "lenient": True,
+                    }
+                },
+                # Search ObjectMetadata.S3.Metadata fields (S3 custom metadata from upload)
+                {
+                    "multi_match": {
+                        "query": clean_query,
+                        "fields": ["Metadata.ObjectMetadata.S3.Metadata.*"],
+                        "type": "best_fields",
+                        "boost": 1.5,
+                        "lenient": True,
+                    }
+                },
             ]
         else:
             # Single term - use the original complex query structure
@@ -398,10 +418,11 @@ def build_search_query(params: SearchParams) -> Dict:
                 },
                 # Search ObjectMetadata.S3.Metadata fields (S3 custom metadata from upload)
                 # This includes user-defined metadata like project, shoot_date, etc.
+                # Note: The full path is Metadata.ObjectMetadata.S3.Metadata.* in the indexed document
                 {
                     "multi_match": {
                         "query": clean_query,
-                        "fields": ["ObjectMetadata.S3.Metadata.*"],
+                        "fields": ["Metadata.ObjectMetadata.S3.Metadata.*"],
                         "type": "best_fields",
                         "boost": 1.5,
                         "lenient": True,
