@@ -396,6 +396,17 @@ def build_search_query(params: SearchParams) -> Dict:
                         "lenient": True,
                     }
                 },
+                # Search ObjectMetadata.S3.Metadata fields (S3 custom metadata from upload)
+                # This includes user-defined metadata like project, shoot_date, etc.
+                {
+                    "multi_match": {
+                        "query": clean_query,
+                        "fields": ["ObjectMetadata.S3.Metadata.*"],
+                        "type": "best_fields",
+                        "boost": 1.5,
+                        "lenient": True,
+                    }
+                },
             ]
 
         query["bool"]["minimum_should_match"] = 1

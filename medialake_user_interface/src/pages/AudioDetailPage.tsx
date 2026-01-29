@@ -883,9 +883,11 @@ const AudioDetailContent: React.FC<AudioDetailContentProps> = ({
                     const metadata = assetData?.data?.asset?.Metadata as Record<string, any> | undefined;
                     const embedded = metadata?.EmbeddedMetadata ?? {};
                     const custom = metadata?.CustomMetadata ?? {};
+                    const objectMeta = metadata?.ObjectMetadata ?? {};
                     const embeddedKeys = Object.keys(embedded);
                     const customKeys = Object.keys(custom).length > 0 ? ["CustomMetadata"] : [];
-                    return [...embeddedKeys, ...customKeys];
+                    const objectMetaKeys = Object.keys(objectMeta).length > 0 ? ["ObjectMetadata"] : [];
+                    return [...embeddedKeys, ...customKeys, ...objectMetaKeys];
                   })()}
                   mediaType="audio"
                 />
