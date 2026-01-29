@@ -325,8 +325,9 @@ const ImageDetailContent: React.FC = () => {
 
   // All sub-categories that exist in this asset's Metadata (EmbeddedMetadata + CustomMetadata)
   const availableCategoryKeys = useMemo(() => {
-    const embedded = assetData?.data?.asset?.Metadata?.EmbeddedMetadata ?? {};
-    const custom = assetData?.data?.asset?.Metadata?.CustomMetadata ?? {};
+    const metadata = assetData?.data?.asset?.Metadata as Record<string, any> | undefined;
+    const embedded = metadata?.EmbeddedMetadata ?? {};
+    const custom = metadata?.CustomMetadata ?? {};
     // Combine keys from both EmbeddedMetadata and CustomMetadata
     const embeddedKeys = Object.keys(embedded);
     const customKeys = Object.keys(custom).length > 0 ? ["CustomMetadata"] : [];
