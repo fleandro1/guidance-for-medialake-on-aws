@@ -323,10 +323,14 @@ const ImageDetailContent: React.FC = () => {
     return transformMetadata(assetData.data.asset.Metadata);
   }, [assetData, transformMetadata]);
 
-  // All sub-categories that exist in this asset’s EmbeddedMetadata
+  // All sub-categories that exist in this asset's Metadata (EmbeddedMetadata + CustomMetadata)
   const availableCategoryKeys = useMemo(() => {
     const embedded = assetData?.data?.asset?.Metadata?.EmbeddedMetadata ?? {};
-    return Object.keys(embedded);
+    const custom = assetData?.data?.asset?.Metadata?.CustomMetadata ?? {};
+    // Combine keys from both EmbeddedMetadata and CustomMetadata
+    const embeddedKeys = Object.keys(embedded);
+    const customKeys = Object.keys(custom).length > 0 ? ["CustomMetadata"] : [];
+    return [...embeddedKeys, ...customKeys];
   }, [assetData]);
 
   const versions = useMemo(() => {

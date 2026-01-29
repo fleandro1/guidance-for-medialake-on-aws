@@ -58,6 +58,8 @@ const categoryMapping = {
   rights: "Rights",
   // Add mapping for ObjectMetadata to display as "Object Metadata"
   ObjectMetadata: "Object Metadata",
+  // Add mapping for CustomMetadata (user-provided metadata at upload time)
+  CustomMetadata: "Custom Metadata",
 };
 
 interface TechnicalMetadataTabProps {
