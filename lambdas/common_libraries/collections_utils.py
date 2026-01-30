@@ -481,8 +481,6 @@ def format_collection_item(
     """
     # Extract collection ID from PK
     collection_id = item["PK"].replace(COLLECTION_PK_PREFIX, "")
-    user_id = user_context.get("user_id") if user_context else None
-    owner_id = item.get("ownerId", "")
 
     formatted_item = {
         "id": collection_id,
@@ -490,7 +488,7 @@ def format_collection_item(
         "description": item.get("description", ""),
         "collectionTypeId": item.get("collectionTypeId", ""),
         "parentId": item.get("parentId"),
-        "ownerId": owner_id,
+        "ownerId": item.get("ownerId", ""),
         "metadata": item.get("customMetadata", {}),
         "tags": item.get("tags", {}),
         "status": item.get("status", ACTIVE_STATUS),
@@ -499,22 +497,15 @@ def format_collection_item(
         "isPublic": item.get("isPublic", False),
         "createdAt": item.get("createdAt", ""),
         "updatedAt": item.get("updatedAt", ""),
-        # Sharing metadata
-        "isShared": item.get("isShared", False),
-        "shareCount": item.get("shareCount", 0),
-        "sharedWithMe": item.get("sharedWithMe", False),
     }
 
     # Add user-specific fields if user context available
-    if user_id:
+    if user_context.get("user_id"):
         formatted_item["isFavorite"] = False  # TODO: Query user collection relationship
-        if owner_id == user_id:
+        if formatted_item["ownerId"] == user_context["user_id"]:
             formatted_item["userRole"] = "owner"
-        elif item.get("sharedWithMe"):
-            # User has shared access to this collection
-            formatted_item["userRole"] = item.get("myRole", "viewer").lower()
         else:
-            formatted_item["userRole"] = "viewer"
+            formatted_item["userRole"] = "viewer"  # TODO: Query actual permissions
 
     # Add TTL if present
     if item.get("expiresAt"):

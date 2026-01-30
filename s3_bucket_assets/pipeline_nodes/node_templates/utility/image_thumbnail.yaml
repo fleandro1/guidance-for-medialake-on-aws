@@ -15,8 +15,6 @@ node:
         timeout: 900
         layers:
           - ResvgCli
-          - Numpy
-          - OpenEXR
         iam_policy:
           statements:
             - effect: Allow

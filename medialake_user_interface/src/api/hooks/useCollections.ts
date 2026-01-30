@@ -23,18 +23,7 @@ export interface Collection {
   userRole?: string;
   createdAt: string;
   updatedAt: string;
-  // Sharing metadata
-  isShared?: boolean;
-  shareCount?: number;
-  sharedWithMe?: boolean;
-  myRole?: string;
-  sharedAt?: string;
-  sharedWith?: Array<{
-    targetId: string;
-    targetType: string;
-    role: string;
-    grantedAt: string;
-  }>;
+  sharedWith?: string[];
   ancestors?: Array<{
     id: string;
     name: string;
@@ -92,9 +81,10 @@ export interface UpdateCollectionRequest {
 }
 
 export interface ShareCollectionRequest {
-  targetUserId: string;
-  accessLevel: "VIEWER" | "EDITOR" | "ADMIN";
-  message?: string;
+  userId?: string;
+  groupId?: string;
+  role: "viewer" | "editor" | "admin";
+  expiresAt?: string;
 }
 
 export interface AddItemToCollectionRequest {
@@ -112,19 +102,14 @@ export interface AddItemToCollectionRequest {
 }
 
 export interface CollectionShare {
-  id?: string;
-  collectionId?: string;
+  id: string;
+  collectionId: string;
   userId?: string;
-  targetId?: string;
-  targetType?: string;
   groupId?: string;
   role: string;
   expiresAt?: string;
-  createdAt?: string;
-  grantedAt?: string;
-  grantedBy?: string;
-  sharedBy?: string;
-  message?: string;
+  createdAt: string;
+  sharedBy: string;
 }
 
 export interface CollectionsResponse {
@@ -261,52 +246,27 @@ export const useGetCollections = (filters?: Record<string, any>) => {
   });
 };
 
-// Hook to get collections shared with the current user
-export const useGetCollectionsSharedWithMe = () => {
+// Hook to get shared collections
+export const useGetSharedCollections = () => {
   const { showError } = useErrorModal();
 
   return useQuery<CollectionsResponse, Error>({
-    queryKey: QUERY_KEYS.COLLECTIONS.sharedWithMe(),
+    queryKey: QUERY_KEYS.COLLECTIONS.shared(),
     queryFn: async ({ signal }) => {
       try {
         const response = await apiClient.get<CollectionsResponse>(
-          API_ENDPOINTS.COLLECTIONS.SHARED_WITH_ME,
+          API_ENDPOINTS.COLLECTIONS.SHARED,
           { signal }
         );
         return response.data;
       } catch (error) {
-        logger.error("Fetch collections shared with me error:", error);
+        logger.error("Fetch shared collections error:", error);
         showError("Failed to fetch shared collections");
         throw error;
       }
     },
   });
 };
-
-// Hook to get collections shared by the current user
-export const useGetCollectionsSharedByMe = () => {
-  const { showError } = useErrorModal();
-
-  return useQuery<CollectionsResponse, Error>({
-    queryKey: QUERY_KEYS.COLLECTIONS.sharedByMe(),
-    queryFn: async ({ signal }) => {
-      try {
-        const response = await apiClient.get<CollectionsResponse>(
-          API_ENDPOINTS.COLLECTIONS.SHARED_BY_ME,
-          { signal }
-        );
-        return response.data;
-      } catch (error) {
-        logger.error("Fetch collections shared by me error:", error);
-        showError("Failed to fetch collections you've shared");
-        throw error;
-      }
-    },
-  });
-};
-
-// Alias for backwards compatibility
-export const useGetSharedCollections = useGetCollectionsSharedWithMe;
 
 // Hook to get a single collection by ID
 export const useGetCollection = (id: string, enabled = true) => {

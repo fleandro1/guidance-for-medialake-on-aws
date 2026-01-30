@@ -1452,31 +1452,6 @@ class AssetProcessor:
         last_modified = s3_response.get("LastModified", datetime.utcnow()).isoformat()
         content_type = s3_response.get("ContentType", "")
 
-        # Extract custom metadata from S3 object metadata
-        s3_metadata = s3_response.get("Metadata", {})
-        custom_metadata = {}
-        
-        for key_name, value in s3_metadata.items():
-            custom_metadata[key_name] = value
-        
-        if custom_metadata:
-            logger.info(f"Extracted {len(custom_metadata)} custom metadata fields from S3 object")
-
-        metadata_structure = {
-            "ObjectMetadata": {
-                "ExtractedDate": datetime.utcnow().isoformat(),
-                "S3": {
-                    "Metadata": s3_metadata,
-                    "ContentType": content_type,
-                    "LastModified": last_modified,
-                },
-            }
-        }
-        
-        # Add CustomMetadata if present
-        if custom_metadata:
-            metadata_structure["CustomMetadata"] = custom_metadata
-
         return {
             "StorageInfo": {
                 "PrimaryLocation": {
@@ -1499,7 +1474,16 @@ class AssetProcessor:
                     },
                 }
             },
-            "Metadata": metadata_structure,
+            "Metadata": {
+                "ObjectMetadata": {
+                    "ExtractedDate": datetime.utcnow().isoformat(),
+                    "S3": {
+                        "Metadata": s3_response.get("Metadata", {}),
+                        "ContentType": content_type,
+                        "LastModified": last_modified,
+                    },
+                }
+            },
         }
 
     @tracer.capture_method

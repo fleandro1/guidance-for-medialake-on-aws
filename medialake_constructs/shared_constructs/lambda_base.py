@@ -624,7 +624,7 @@ class Lambda(Construct):
 
                 # Copy lambda source files
                 echo "Copying Lambda source files..."
-                cp -rL . /asset-output
+                cp -au . /asset-output
 
                 echo "Bundling process completed successfully"
                 """,

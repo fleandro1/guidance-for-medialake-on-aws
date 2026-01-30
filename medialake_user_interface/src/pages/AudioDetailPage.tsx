@@ -879,16 +879,9 @@ const AudioDetailContent: React.FC<AudioDetailContentProps> = ({
               {activeTab === "technical" && (
                 <TechnicalMetadataTab
                   metadataAccordions={metadataAccordions}
-                  availableCategories={(() => {
-                    const metadata = assetData?.data?.asset?.Metadata as Record<string, any> | undefined;
-                    const embedded = metadata?.EmbeddedMetadata ?? {};
-                    const custom = metadata?.CustomMetadata ?? {};
-                    const objectMeta = metadata?.ObjectMetadata ?? {};
-                    const embeddedKeys = Object.keys(embedded);
-                    const customKeys = Object.keys(custom).length > 0 ? ["CustomMetadata"] : [];
-                    const objectMetaKeys = Object.keys(objectMeta).length > 0 ? ["ObjectMetadata"] : [];
-                    return [...embeddedKeys, ...customKeys, ...objectMetaKeys];
-                  })()}
+                  availableCategories={Object.keys(
+                    assetData?.data?.asset?.Metadata?.EmbeddedMetadata || {}
+                  )}
                   mediaType="audio"
                 />
               )}

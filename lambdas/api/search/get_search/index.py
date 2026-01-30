@@ -333,26 +333,6 @@ def build_search_query(params: SearchParams) -> Dict:
                         }
                     }
                 },
-                # Search CustomMetadata fields (user-provided metadata at upload time)
-                {
-                    "multi_match": {
-                        "query": clean_query,
-                        "fields": ["Metadata.CustomMetadata.*"],
-                        "type": "best_fields",
-                        "boost": 1.5,
-                        "lenient": True,
-                    }
-                },
-                # Search ObjectMetadata.S3.Metadata fields (S3 custom metadata from upload)
-                {
-                    "multi_match": {
-                        "query": clean_query,
-                        "fields": ["Metadata.ObjectMetadata.S3.Metadata.*"],
-                        "type": "best_fields",
-                        "boost": 1.5,
-                        "lenient": True,
-                    }
-                },
             ]
         else:
             # Single term - use the original complex query structure
@@ -404,30 +384,17 @@ def build_search_query(params: SearchParams) -> Dict:
                         "boost": 0.7,
                     }
                 },
-                # Search CustomMetadata fields (user-provided metadata at upload time)
-                # Note: Metadata.* wildcard was disabled due to field expansion limit (1024 fields)
-                # CustomMetadata has far fewer fields so it's safe to search
-                {
-                    "multi_match": {
-                        "query": clean_query,
-                        "fields": ["Metadata.CustomMetadata.*"],
-                        "type": "best_fields",
-                        "boost": 1.5,
-                        "lenient": True,
-                    }
-                },
-                # Search ObjectMetadata.S3.Metadata fields (S3 custom metadata from upload)
-                # This includes user-defined metadata like project, shoot_date, etc.
-                # Note: The full path is Metadata.ObjectMetadata.S3.Metadata.* in the indexed document
-                {
-                    "multi_match": {
-                        "query": clean_query,
-                        "fields": ["Metadata.ObjectMetadata.S3.Metadata.*"],
-                        "type": "best_fields",
-                        "boost": 1.5,
-                        "lenient": True,
-                    }
-                },
+                # Metadata search disabled to avoid field expansion limit (1024 fields)
+                # The Metadata.* wildcard was causing: "field expansion matches too many fields, limit: 1024, got: 1065"
+                # {
+                #     "multi_match": {
+                #         "query": clean_query,
+                #         "fields": ["Metadata.*"],
+                #         "type": "best_fields",
+                #         "boost": 0.8,
+                #         "lenient": True,
+                #     }
+                # },
             ]
 
         query["bool"]["minimum_should_match"] = 1
