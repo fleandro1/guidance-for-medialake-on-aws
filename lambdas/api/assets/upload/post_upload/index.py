@@ -80,9 +80,17 @@ request_schema = {
         "content_type": {"type": "string"},
         "file_size": {"type": "integer", "minimum": 1},
         "path": {"type": "string", "default": ""},
+        "metadata": {"type": "object", "default": {}},
     },
     "required": ["connector_id", "filename", "content_type", "file_size"],
 }
+
+# Maximum number of custom metadata keys allowed
+MAX_METADATA_KEYS = 10
+# Maximum length for metadata key names
+MAX_METADATA_KEY_LENGTH = 128
+# Maximum length for metadata values
+MAX_METADATA_VALUE_LENGTH = 2048
 
 
 class RequestBody(BaseModel):
@@ -91,6 +99,7 @@ class RequestBody(BaseModel):
     content_type: str
     file_size: int = Field(gt=0)
     path: str = ""
+    metadata: Dict[str, str] = Field(default_factory=dict)
 
     @validator("filename")
     @classmethod
@@ -125,6 +134,34 @@ class RequestBody(BaseModel):
         # Strip leading slashes to avoid absolute paths
         normalized_path = normalized_path.lstrip("/")
         return normalized_path
+
+    @validator("metadata")
+    @classmethod
+    def validate_metadata(cls, v):
+        if not v:
+            return v
+        
+        # Validate number of keys
+        if len(v) > MAX_METADATA_KEYS:
+            raise ValueError(f"Maximum {MAX_METADATA_KEYS} metadata keys allowed")
+        
+        # Validate each key-value pair
+        for key, value in v.items():
+            # Validate key
+            if not isinstance(key, str):
+                raise ValueError("Metadata keys must be strings")
+            if len(key) > MAX_METADATA_KEY_LENGTH:
+                raise ValueError(f"Metadata key '{key}' exceeds maximum length of {MAX_METADATA_KEY_LENGTH}")
+            if not re.match(r'^[a-zA-Z0-9_-]+$', key):
+                raise ValueError(f"Metadata key '{key}' contains invalid characters. Only alphanumeric, underscore, and hyphen allowed")
+            
+            # Validate value
+            if not isinstance(value, str):
+                raise ValueError(f"Metadata value for key '{key}' must be a string")
+            if len(value) > MAX_METADATA_VALUE_LENGTH:
+                raise ValueError(f"Metadata value for key '{key}' exceeds maximum length of {MAX_METADATA_VALUE_LENGTH}")
+        
+        return v
 
 
 class APIError(Exception):
@@ -304,9 +341,20 @@ def is_multipart_upload_required(file_size: int) -> bool:
 
 @tracer.capture_method
 def generate_presigned_post_url(
-    bucket: str, key: str, content_type: str, expiration: int = DEFAULT_EXPIRATION
+    bucket: str, key: str, content_type: str, metadata: Dict[str, str] = None, expiration: int = DEFAULT_EXPIRATION
 ) -> Dict[str, Any]:
-    """Generate a presigned POST URL for the S3 object using region-aware S3 client."""
+    """Generate a presigned POST URL for the S3 object using region-aware S3 client.
+    
+    Args:
+        bucket: S3 bucket name
+        key: S3 object key
+        content_type: MIME type of the file
+        metadata: Optional custom metadata to attach to the S3 object
+        expiration: URL expiration time in seconds
+    
+    Returns:
+        Presigned POST URL data including URL and fields
+    """
     try:
         # Get region-specific S3 client
         s3_client = _get_s3_client_for_bucket(bucket)
@@ -318,12 +366,26 @@ def generate_presigned_post_url(
             {"Content-Type": content_type},
         ]
 
+        fields = {
+            "Content-Type": content_type,
+        }
+
+        # Add custom metadata to fields and conditions
+        # S3 metadata keys must be prefixed with 'x-amz-meta-' for presigned POST
+        if metadata:
+            for meta_key, meta_value in metadata.items():
+                s3_meta_key = f"x-amz-meta-{meta_key}"
+                fields[s3_meta_key] = meta_value
+                conditions.append({s3_meta_key: meta_value})
+            
+            logger.info(
+                f"Adding custom metadata to presigned POST - keys: {list(metadata.keys())}"
+            )
+
         presigned_post = s3_client.generate_presigned_post(
             Bucket=bucket,
             Key=key,
-            Fields={
-                "Content-Type": content_type,
-            },
+            Fields=fields,
             Conditions=conditions,
             ExpiresIn=expiration,
         )
@@ -339,8 +401,18 @@ def generate_presigned_post_url(
 
 
 @tracer.capture_method
-def create_multipart_upload(bucket: str, key: str, content_type: str) -> Dict[str, Any]:
-    """Initiate a multipart upload and return the upload ID using region-aware S3 client."""
+def create_multipart_upload(bucket: str, key: str, content_type: str, metadata: Dict[str, str] = None) -> Dict[str, Any]:
+    """Initiate a multipart upload and return the upload ID using region-aware S3 client.
+    
+    Args:
+        bucket: S3 bucket name
+        key: S3 object key
+        content_type: MIME type of the file
+        metadata: Optional custom metadata to attach to the S3 object
+    
+    Returns:
+        Dictionary containing the upload_id
+    """
     try:
         # Get region-specific S3 client
         s3_client = _get_s3_client_for_bucket(bucket)
@@ -350,11 +422,21 @@ def create_multipart_upload(bucket: str, key: str, content_type: str) -> Dict[st
             f"content_type: {content_type}, region: {s3_client.meta.region_name}"
         )
 
-        response = s3_client.create_multipart_upload(
-            Bucket=bucket,
-            Key=key,
-            ContentType=content_type,
-        )
+        # Build the create_multipart_upload parameters
+        create_params = {
+            "Bucket": bucket,
+            "Key": key,
+            "ContentType": content_type,
+        }
+
+        # Add custom metadata if provided
+        if metadata:
+            create_params["Metadata"] = metadata
+            logger.info(
+                f"Adding custom metadata to multipart upload - keys: {list(metadata.keys())}"
+            )
+
+        response = s3_client.create_multipart_upload(**create_params)
 
         upload_id = response["UploadId"]
         logger.info(
@@ -480,6 +562,12 @@ def lambda_handler(
         # Normalize the key to prevent any issues
         key = str(Path(key))
 
+        # Log custom metadata if provided
+        if request.metadata:
+            logger.info(
+                f"Custom metadata provided - keys: {list(request.metadata.keys())}"
+            )
+
         # Handle multipart upload if file is larger than 100MB
         if is_multipart_upload_required(request.file_size):
             logger.info(
@@ -489,10 +577,10 @@ def lambda_handler(
             )
 
             # For multipart uploads, we need to:
-            # 1. Create a multipart upload
+            # 1. Create a multipart upload with metadata
             # 2. Generate presigned URLs for each part
             multipart_upload_info = create_multipart_upload(
-                bucket, key, request.content_type
+                bucket, key, request.content_type, request.metadata if request.metadata else None
             )
             upload_id = multipart_upload_info["upload_id"]
 
@@ -558,7 +646,7 @@ def lambda_handler(
 
             # For single-part uploads, generate a presigned POST URL
             presigned_post = generate_presigned_post_url(
-                bucket, key, request.content_type
+                bucket, key, request.content_type, request.metadata if request.metadata else None
             )
 
             logger.info(

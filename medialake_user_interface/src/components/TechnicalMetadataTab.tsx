@@ -58,6 +58,10 @@ const categoryMapping = {
   rights: "Rights",
   // Add mapping for ObjectMetadata to display as "Object Metadata"
   ObjectMetadata: "Object Metadata",
+  // S3 metadata section
+  S3: "S3 Object Metadata",
+  // Custom metadata from S3 user-defined metadata
+  Metadata: "Custom Metadata",
 };
 
 interface TechnicalMetadataTabProps {

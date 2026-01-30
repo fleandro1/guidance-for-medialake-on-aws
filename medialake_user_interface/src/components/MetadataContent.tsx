@@ -140,7 +140,15 @@ const MetadataContent: React.FC<MetadataContentProps> = ({
   } else if (typeof data === "object" && data !== null) {
     let entries = Object.entries(data);
     // Filter out keys that contain "Metadata" to hide them from display
-    entries = entries.filter(([key]) => !key.includes("Metadata"));
+    // Exception: Keep "Metadata" key when it's inside S3 object (custom metadata)
+    // This is identified by checking if the parent category is "S3" or if we're at depth > 0
+    entries = entries.filter(([key]) => {
+      // Allow "Metadata" key if it's the S3 custom metadata (when category is S3 or at nested depth)
+      if (key === "Metadata" && (category === "S3" || depth > 0)) {
+        return true;
+      }
+      return !key.includes("Metadata");
+    });
     const sortedEntries = sortEntries(entries);
     // Flatten nested metadata
     const flattenedEntries = flattenNestedMetadata(sortedEntries);
