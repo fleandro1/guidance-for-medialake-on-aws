@@ -74,18 +74,7 @@ class MediaLakeClient:
         if metadata:
             payload["metadata"] = metadata
 
-        print(f"Request URL: {url}")
-        print(f"Request Headers: {headers}")
-        print(f"Request Payload: {payload}")
-
         response = requests.post(url, headers=headers, json=payload)
-
-        # Debug: Print response details
-        print(f"\n--- Response ---")
-        print(f"Status Code: {response.status_code}")
-        print(f"Response Headers: {dict(response.headers)}")
-        print(f"Response Text: '{response.text[:1000] if response.text else 'EMPTY'}'")
-        print(f"--- End Response ---\n")
 
         # Check status first
         if response.status_code != 200:
@@ -133,19 +122,7 @@ class MediaLakeClient:
         url = f"{self.api_base}/permissions/permission-sets"
         headers = self._get_headers()
 
-        print(f"Request URL: {url}")
-        print(f"Request Headers: {headers}")
-
         response = requests.get(url, headers=headers)
-
-        # Debug: Print response details
-        print(f"\n--- Response ---")
-        print(f"Status Code: {response.status_code}")
-        print(f"Response Headers: {dict(response.headers)}")
-        print(f"Response Text: '{response.text[:1000] if response.text else 'EMPTY'}'")
-        print(f"Response Content-Type: {response.headers.get('content-type', 'NOT SET')}")
-        print(f"Response Encoding: {response.encoding}")
-        print(f"--- End Response ---\n")
 
         if response.status_code != 200:
             raise ValueError(f"Server returned status {response.status_code}: {response.text}")
@@ -171,104 +148,6 @@ class MediaLakeClient:
 
         return json_response
 
-    def add_custom_metadata(self, asset_id: str, metadata: dict) -> dict:
-        """
-        Add or update custom metadata on an existing asset.
-        
-        Note: This uses a direct DynamoDB update since there's no dedicated API endpoint
-        for updating asset metadata. The metadata is stored in the Metadata.CustomMetadata
-        field of the asset record.
-        
-        Args:
-            asset_id: The InventoryID of the asset (e.g., "asset:img:uuid-here")
-            metadata: Dictionary of custom metadata key-value pairs to add/update
-            
-        Returns:
-            dict: The API response containing the updated asset
-        """
-        # Use the assets/{id}/metadata endpoint if it exists, otherwise fall back to
-        # a workaround using the available API
-        url = f"{self.api_base}/assets/{asset_id}/metadata"
-        headers = self._get_headers()
-        payload = {
-            "customMetadata": metadata
-        }
-
-        print(f"Request URL: {url}")
-        print(f"Request Headers: {headers}")
-        print(f"Request Payload: {payload}")
-
-        # Try PATCH first (most RESTful for partial updates)
-        response = requests.patch(url, headers=headers, json=payload)
-
-        # Debug: Print response details
-        print(f"\n--- Response ---")
-        print(f"Status Code: {response.status_code}")
-        print(f"Response Headers: {dict(response.headers)}")
-        print(f"Response Text: '{response.text[:1000] if response.text else 'EMPTY'}'")
-        print(f"Response Content-Type: {response.headers.get('content-type', 'NOT SET')}")
-        print(f"--- End Response ---\n")
-
-        # If PATCH to /metadata endpoint doesn't exist (404), try PUT
-        if response.status_code == 404:
-            print("PATCH /metadata not found, trying PUT...")
-            response = requests.put(url, headers=headers, json=payload)
-            
-            print(f"\n--- PUT Response ---")
-            print(f"Status Code: {response.status_code}")
-            print(f"Response Text: '{response.text[:1000] if response.text else 'EMPTY'}'")
-            print(f"--- End PUT Response ---\n")
-
-        # If neither endpoint exists, we need to use a workaround:
-        # Get the asset, modify it, and use an available update mechanism
-        if response.status_code == 404:
-            print("No metadata endpoint available. Using workaround via asset retrieval...")
-            
-            # Get current asset data
-            get_url = f"{self.api_base}/assets/{asset_id}"
-            get_response = requests.get(get_url, headers=headers)
-            
-            if get_response.status_code != 200:
-                raise ValueError(f"Failed to get asset: {get_response.status_code}: {get_response.text}")
-            
-            asset_data = get_response.json()
-            print(f"Current asset data retrieved successfully")
-            print(f"Asset: {asset_data}")
-            
-            # Note: Without a proper update endpoint, we can only return the current state
-            # and inform the user that custom metadata updates require a different approach
-            return {
-                "status": "warning",
-                "message": "No API endpoint available for updating custom metadata. "
-                           "Custom metadata can only be set during asset upload. "
-                           "Consider re-uploading the asset with the desired metadata.",
-                "data": {
-                    "asset": asset_data,
-                    "requested_metadata": metadata
-                }
-            }
-
-        if response.status_code not in [200, 201]:
-            raise ValueError(f"Server returned status {response.status_code}: {response.text}")
-
-        # Check if response has content before parsing JSON
-        if not response.text or response.text.strip() == "":
-            raise ValueError("Server returned empty response body")
-
-        # Check content type
-        content_type = response.headers.get('content-type', '').lower()
-        if 'application/json' not in content_type:
-            print(f"WARNING: Response content-type is '{content_type}', not JSON")
-
-        try:
-            json_response = response.json()
-            print(f"Parsed JSON: {json_response}")
-        except Exception as e:
-            print(f"JSON Parse Error: {e}")
-            print(f"Response text (first 500 chars): {response.text[:500]}")
-            raise ValueError(f"Failed to parse JSON response: {e}. Raw text: {response.text}")
-
-        return json_response
 
     def get_asset(self, asset_id: str) -> dict:
         """
@@ -283,18 +162,7 @@ class MediaLakeClient:
         url = f"{self.api_base}/assets/{asset_id}"
         headers = self._get_headers()
 
-        print(f"Request URL: {url}")
-        print(f"Request Headers: {headers}")
-
         response = requests.get(url, headers=headers)
-
-        # Debug: Print response details
-        print(f"\n--- Response ---")
-        print(f"Status Code: {response.status_code}")
-        print(f"Response Headers: {dict(response.headers)}")
-        print(f"Response Text: '{response.text[:1000] if response.text else 'EMPTY'}'")
-        print(f"Response Content-Type: {response.headers.get('content-type', 'NOT SET')}")
-        print(f"--- End Response ---\n")
 
         if response.status_code != 200:
             raise ValueError(f"Server returned status {response.status_code}: {response.text}")
@@ -331,18 +199,7 @@ class MediaLakeClient:
         url = f"{self.api_base}/connectors"
         headers = self._get_headers()
 
-        print(f"Request URL: {url}")
-        print(f"Request Headers: {headers}")
-
         response = requests.get(url, headers=headers)
-
-        # Debug: Print response details
-        print(f"\n--- Response ---")
-        print(f"Status Code: {response.status_code}")
-        print(f"Response Headers: {dict(response.headers)}")
-        print(f"Response Text: '{response.text[:1000] if response.text else 'EMPTY'}'")
-        print(f"Response Content-Type: {response.headers.get('content-type', 'NOT SET')}")
-        print(f"--- End Response ---\n")
 
         if response.status_code != 200:
             raise ValueError(f"Server returned status {response.status_code}: {response.text}")
