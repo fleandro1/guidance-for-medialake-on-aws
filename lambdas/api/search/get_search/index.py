@@ -386,15 +386,18 @@ def build_search_query(params: SearchParams) -> Dict:
                 },
                 # Metadata search disabled to avoid field expansion limit (1024 fields)
                 # The Metadata.* wildcard was causing: "field expansion matches too many fields, limit: 1024, got: 1065"
-                # {
-                #     "multi_match": {
-                #         "query": clean_query,
-                #         "fields": ["Metadata.*"],
-                #         "type": "best_fields",
-                #         "boost": 0.8,
-                #         "lenient": True,
-                #     }
-                # },
+                #
+                # We will uncomment this block to re-enable metadata search for testing purposes - 2025-02-01
+                #
+                {
+                    "multi_match": {
+                        "query": clean_query,
+                        "fields": ["Metadata.*"],
+                        "type": "best_fields",
+                        "boost": 0.8,
+                        "lenient": True,
+                    }
+                },
             ]
 
         query["bool"]["minimum_should_match"] = 1
