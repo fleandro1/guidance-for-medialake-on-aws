@@ -91,6 +91,14 @@ class NodesStack(cdk.NestedStack):
             code_path=["lambdas", "nodes", "image_proxy"],
         )
 
+        self.proxy_logger_lambda_deployment = LambdaDeployment(
+            self,
+            "ProxyLoggerLambdaDeployment",
+            destination_bucket=props.iac_bucket.bucket,
+            parent_folder="nodes/utility",
+            code_path=["lambdas", "nodes", "proxy_logger"],
+        )
+
         self.image_thumbnail_lambda_deployment = LambdaDeployment(
             self,
             "ImageThumbnailLambdaDeployment",

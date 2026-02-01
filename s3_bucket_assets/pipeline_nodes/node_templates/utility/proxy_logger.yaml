@@ -1,0 +1,48 @@
+spec: v1.0.0
+node:
+  id: proxy_logger
+  title: Proxy Logger
+  description: Logs the proxy path from upstream nodes and passes through input data unchanged
+  version: 1.0.0
+  type: utility
+  integration:
+    config:
+      lambda:
+        handler: utility/ProxyLoggerLambdaDeployment
+        runtime: python3.12
+        memory_size: 256
+        timeout: 30
+        iam_policy:
+          statements:
+            - effect: Allow
+              actions:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              resources:
+                - arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+
+actions:
+  log:
+    summary: Log Proxy Path
+    description: Logs the proxy path from the input asset and passes through all data to the next node
+    operationId: logProxyPath
+    parameters:
+      - in: body
+        name: log_level
+        required: false
+        schema:
+          type: string
+          description: Log level for the proxy path output (INFO, DEBUG, WARNING)
+          default: INFO
+          enum:
+            - DEBUG
+            - INFO
+            - WARNING
+    x-requestMapping: processor/proxy_logger/log/
+    x-responseMapping: processor/proxy_logger/log/
+    connections:
+      incoming:
+        type: [any]
+      outgoing:
+        type: [any]
