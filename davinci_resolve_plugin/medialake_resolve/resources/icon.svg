@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00a8e8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0099cc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0077aa;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background rounded square -->
+  <rect x="32" y="32" width="448" height="448" rx="80" fill="#1a1a1d"/>
+  <rect x="32" y="32" width="448" height="448" rx="80" fill="none" stroke="url(#mainGradient)" stroke-width="4"/>
+  
+  <!-- Cloud shape representing storage/lake -->
+  <g transform="translate(256, 200)">
+    <!-- Main cloud body -->
+    <ellipse cx="-30" cy="0" rx="65" ry="50" fill="url(#mainGradient)" opacity="0.9"/>
+    <ellipse cx="30" cy="0" rx="65" ry="50" fill="url(#mainGradient)" opacity="0.9"/>
+    <ellipse cx="0" cy="-15" rx="55" ry="45" fill="url(#mainGradient)" opacity="0.9"/>
+    <rect x="-90" y="-10" width="180" height="50" fill="url(#mainGradient)" opacity="0.9"/>
+  </g>
+  
+  <!-- Water waves representing "lake" -->
+  <g transform="translate(256, 320)">
+    <!-- Wave 1 -->
+    <path d="M -120,0 Q -90,-15 -60,0 T 0,0 T 60,0 T 120,0" 
+          fill="none" stroke="url(#accentGradient)" stroke-width="3" opacity="0.8"/>
+    <!-- Wave 2 -->
+    <path d="M -120,20 Q -90,5 -60,20 T 0,20 T 60,20 T 120,20" 
+          fill="none" stroke="url(#accentGradient)" stroke-width="3" opacity="0.6"/>
+    <!-- Wave 3 -->
+    <path d="M -120,40 Q -90,25 -60,40 T 0,40 T 60,40 T 120,40" 
+          fill="none" stroke="url(#accentGradient)" stroke-width="3" opacity="0.4"/>
+  </g>
+  
+  <!-- Media/Film strip element -->
+  <g transform="translate(256, 390)">
+    <rect x="-80" y="0" width="160" height="30" rx="5" fill="url(#mainGradient)" opacity="0.7"/>
+    <rect x="-75" y="5" width="35" height="20" rx="2" fill="#1a1a1d" opacity="0.8"/>
+    <rect x="-30" y="5" width="35" height="20" rx="2" fill="#1a1a1d" opacity="0.8"/>
+    <rect x="15" y="5" width="35" height="20" rx="2" fill="#1a1a1d" opacity="0.8"/>
+    <rect x="60" y="5" width="35" height="20" rx="2" fill="#1a1a1d" opacity="0.8"/>
+  </g>
+  
+  <!-- Shine effect -->
+  <ellipse cx="140" cy="120" rx="40" ry="60" fill="white" opacity="0.1" transform="rotate(-30 140 120)"/>
+</svg>

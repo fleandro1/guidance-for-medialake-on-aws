@@ -81,6 +81,7 @@ def main():
     from PySide6.QtCore import Qt
     
     from medialake_resolve.ui.main_window import MainWindow
+    from medialake_resolve.resources import get_app_icon
     
     # Enable high DPI scaling
     QApplication.setHighDpiScaleFactorRoundingPolicy(
@@ -89,10 +90,37 @@ def main():
     
     # Create application
     app = QApplication(sys.argv)
-    app.setApplicationName("Media Lake for Resolve")
+    app.setApplicationName("Media Lake Plugin")
+    app.setApplicationDisplayName("Media Lake Plugin")  # This sets the dock tooltip on macOS
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("AWS")
     app.setOrganizationDomain("aws.amazon.com")
+    
+    # On macOS, set the process name to change dock tooltip
+    if sys.platform == "darwin":
+        try:
+            from Foundation import NSProcessInfo
+            processInfo = NSProcessInfo.processInfo()
+            processInfo.setProcessName_("Media Lake Plugin")
+            logger.info("macOS process name set to 'Media Lake Plugin'")
+        except ImportError:
+            # Foundation not available, use alternative method
+            try:
+                import ctypes
+                import ctypes.util
+                libc = ctypes.CDLL(ctypes.util.find_library('c'))
+                # PR_SET_NAME is not available on macOS, so just log that we couldn't set it
+                logger.info("Using Qt application name for dock display")
+            except Exception as e:
+                logger.debug(f"Could not set macOS process name: {e}")
+    
+    # Set application icon (shows in macOS dock and window title bars)
+    try:
+        app_icon = get_app_icon()
+        app.setWindowIcon(app_icon)
+        logger.info("Application icon loaded successfully")
+    except Exception as e:
+        logger.warning(f"Failed to load application icon: {e}")
     
     # Check if launched from Resolve
     launched_from_resolve = os.environ.get("MEDIALAKE_LAUNCHED_FROM_RESOLVE") == "1"
@@ -176,46 +204,53 @@ def apply_dark_theme(app):
     # Additional stylesheet for fine-tuning
     app.setStyleSheet("""
         QToolTip {
-            background-color: #323235;
-            color: #c8c8c8;
-            border: 1px solid #5a5a5e;
-            padding: 4px;
+            background-color: #2a2a2d;
+            color: #d4d4d4;
+            border: 1px solid #4a4a4d;
+            padding: 6px 8px;
+            border-radius: 4px;
         }
         
         QMenu {
-            background-color: #2d2d30;
+            background-color: #2a2a2d;
             border: 1px solid #3f3f46;
+            border-radius: 6px;
+            padding: 4px;
         }
         
         QMenu::item {
-            padding: 6px 24px 6px 12px;
+            padding: 8px 32px 8px 16px;
+            border-radius: 4px;
+            margin: 2px 4px;
         }
         
         QMenu::item:selected {
-            background-color: #0078d7;
+            background-color: #00a8e8;
+            color: white;
         }
         
         QMenu::separator {
             height: 1px;
             background-color: #3f3f46;
-            margin: 4px 8px;
+            margin: 6px 12px;
         }
         
         QScrollBar:vertical {
-            background-color: #2d2d30;
-            width: 14px;
+            background-color: #1e1e20;
+            width: 12px;
             margin: 0;
+            border-radius: 6px;
         }
         
         QScrollBar::handle:vertical {
-            background-color: #5a5a5e;
+            background-color: #505055;
             min-height: 30px;
             margin: 2px;
-            border-radius: 4px;
+            border-radius: 5px;
         }
         
         QScrollBar::handle:vertical:hover {
-            background-color: #6a6a6e;
+            background-color: #606065;
         }
         
         QScrollBar::add-line:vertical,
@@ -224,20 +259,21 @@ def apply_dark_theme(app):
         }
         
         QScrollBar:horizontal {
-            background-color: #2d2d30;
-            height: 14px;
+            background-color: #1e1e20;
+            height: 12px;
             margin: 0;
+            border-radius: 6px;
         }
         
         QScrollBar::handle:horizontal {
-            background-color: #5a5a5e;
+            background-color: #505055;
             min-width: 30px;
             margin: 2px;
-            border-radius: 4px;
+            border-radius: 5px;
         }
         
         QScrollBar::handle:horizontal:hover {
-            background-color: #6a6a6e;
+            background-color: #606065;
         }
         
         QScrollBar::add-line:horizontal,
@@ -246,54 +282,63 @@ def apply_dark_theme(app):
         }
         
         QLineEdit {
-            background-color: #1e1e20;
-            border: 1px solid #3f3f46;
-            border-radius: 4px;
-            padding: 6px;
-            selection-background-color: #0078d7;
+            background-color: #1a1a1d;
+            border: 1px solid #3a3a3d;
+            border-radius: 5px;
+            padding: 8px 10px;
+            selection-background-color: #00a8e8;
+            font-size: 13px;
         }
         
         QLineEdit:focus {
-            border: 1px solid #0078d7;
+            border: 1px solid #00a8e8;
+            background-color: #1e1e20;
         }
         
         QPushButton {
-            background-color: #3f3f46;
-            border: 1px solid #5a5a5e;
-            border-radius: 4px;
-            padding: 6px 16px;
+            background-color: #3a3a3f;
+            border: 1px solid #4a4a4f;
+            border-radius: 5px;
+            padding: 8px 18px;
             min-width: 80px;
+            font-weight: 500;
         }
         
         QPushButton:hover {
-            background-color: #4a4a50;
+            background-color: #454550;
+            border: 1px solid #5a5a5f;
         }
         
         QPushButton:pressed {
-            background-color: #0078d7;
+            background-color: #00a8e8;
+            border: 1px solid #00c8ff;
         }
         
         QPushButton:disabled {
-            background-color: #2d2d30;
-            color: #6a6a6e;
+            background-color: #2a2a2d;
+            color: #5a5a5d;
+            border: 1px solid #3a3a3d;
         }
         
         QProgressBar {
-            background-color: #1e1e20;
-            border: 1px solid #3f3f46;
-            border-radius: 4px;
+            background-color: #1a1a1d;
+            border: 1px solid #3a3a3d;
+            border-radius: 5px;
             text-align: center;
+            height: 20px;
         }
         
         QProgressBar::chunk {
-            background-color: #0078d7;
-            border-radius: 3px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #00a8e8, stop:1 #00d4ff);
+            border-radius: 4px;
         }
         
         QTableView, QTreeView, QListView {
-            background-color: #1e1e20;
-            border: 1px solid #3f3f46;
-            selection-background-color: #0078d7;
+            background-color: #1a1a1d;
+            border: 1px solid #3a3a3d;
+            selection-background-color: #00a8e8;
+            border-radius: 4px;
         }
         
         QTableView::item:selected, 

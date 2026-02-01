@@ -82,6 +82,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Media Lake for DaVinci Resolve")
         self.setMinimumSize(1024, 768)
         
+        # Set window icon
+        try:
+            from medialake_resolve.resources import get_app_icon
+            self.setWindowIcon(get_app_icon())
+        except Exception as e:
+            print(f"Failed to load window icon: {e}")
+        
         # Create menu bar
         self._create_menu_bar()
         
@@ -190,7 +197,10 @@ class MainWindow(QMainWindow):
         
         # Connection status
         self._connection_label = QLabel("Not connected")
-        self._connection_label.setStyleSheet("padding: 0 10px; color: gray;")
+        self._connection_label.setStyleSheet(
+            "padding: 4px 12px; color: #888; font-weight: 500; "
+            "background-color: #2a2a2d; border-radius: 4px;"
+        )
         toolbar.addWidget(self._connection_label)
         
         toolbar.addSeparator()
@@ -230,7 +240,10 @@ class MainWindow(QMainWindow):
         
         # Resolve status
         self._resolve_label = QLabel("Resolve: Not connected")
-        self._resolve_label.setStyleSheet("padding: 0 10px; color: gray;")
+        self._resolve_label.setStyleSheet(
+            "padding: 4px 12px; color: #888; font-weight: 500; "
+            "background-color: #2a2a2d; border-radius: 4px;"
+        )
         toolbar.addWidget(self._resolve_label)
     
     def _create_status_bar(self) -> None:
@@ -344,7 +357,11 @@ class MainWindow(QMainWindow):
         """
         # Update UI
         self._connection_label.setText(f"Connected as {username}")
-        self._connection_label.setStyleSheet("padding: 0 10px; color: green;")
+        self._connection_label.setStyleSheet(
+            "padding: 4px 12px; color: #00d4ff; font-weight: 500; "
+            "background-color: rgba(0, 212, 255, 0.15); border-radius: 4px; "
+            "border: 1px solid rgba(0, 212, 255, 0.3);"
+        )
         self._connect_button.setText("Reconnect")
         
         # Initialize API client
@@ -416,7 +433,10 @@ class MainWindow(QMainWindow):
             self._upload_controller = None
         
         self._connection_label.setText("Not connected")
-        self._connection_label.setStyleSheet("padding: 0 10px; color: gray;")
+        self._connection_label.setStyleSheet(
+            "padding: 4px 12px; color: #888; font-weight: 500; "
+            "background-color: #2a2a2d; border-radius: 4px;"
+        )
         self._connect_button.setText("Connect")
         
         self._browser_view.set_assets([])
@@ -442,14 +462,26 @@ class MainWindow(QMainWindow):
             version = self._resolve_connection.get_resolve_version()
             project_name = self._project_settings.get_project_name()
             self._resolve_label.setText(f"Resolve Project: {project_name}")
-            self._resolve_label.setStyleSheet("padding: 0 10px; color: green;")
+            self._resolve_label.setStyleSheet(
+                "padding: 4px 12px; color: #00d4ff; font-weight: 500; "
+                "background-color: rgba(0, 212, 255, 0.15); border-radius: 4px; "
+                "border: 1px solid rgba(0, 212, 255, 0.3);"
+            )
             
         except ResolveNotRunningError:
             self._resolve_label.setText("Resolve: Not running")
-            self._resolve_label.setStyleSheet("padding: 0 10px; color: orange;")
+            self._resolve_label.setStyleSheet(
+                "padding: 4px 12px; color: #ffaa00; font-weight: 500; "
+                "background-color: rgba(255, 170, 0, 0.15); border-radius: 4px; "
+                "border: 1px solid rgba(255, 170, 0, 0.3);"
+            )
         except Exception as e:
             self._resolve_label.setText("Resolve: Error")
-            self._resolve_label.setStyleSheet("padding: 0 10px; color: red;")
+            self._resolve_label.setStyleSheet(
+                "padding: 4px 12px; color: #ff6b6b; font-weight: 500; "
+                "background-color: rgba(255, 107, 107, 0.15); border-radius: 4px; "
+                "border: 1px solid rgba(255, 107, 107, 0.3);"
+            )
             print(f"Resolve connection error: {e}")
     
     def _load_assets(self) -> None:

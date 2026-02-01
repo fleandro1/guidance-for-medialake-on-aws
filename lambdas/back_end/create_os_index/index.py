@@ -119,7 +119,7 @@ def create_index_with_retry(
             )
             req.headers["X-Amz-Content-SHA256"] = SigV4Auth(
                 credentials, service, region
-            ).payload(req)
+            ).payload(req) 
             SigV4Auth(credentials, service, region).add_auth(req)
             prepared = req.prepare()
 
