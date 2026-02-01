@@ -221,6 +221,11 @@ export const useGetCollections = (filters?: Record<string, any>) => {
     queryFn: async ({ signal }) => {
       try {
         const params = new URLSearchParams();
+        
+        // Set a high limit to get all collections (API max is 100)
+        // If there are more than 100 collections, pagination would be needed
+        params.append('limit', '100');
+        
         if (filters) {
           Object.entries(filters).forEach(([key, value]) => {
             if (value !== undefined && value !== null) {
@@ -229,9 +234,7 @@ export const useGetCollections = (filters?: Record<string, any>) => {
           });
         }
 
-        const url = params.toString()
-          ? `${API_ENDPOINTS.COLLECTIONS.BASE}?${params}`
-          : API_ENDPOINTS.COLLECTIONS.BASE;
+        const url = `${API_ENDPOINTS.COLLECTIONS.BASE}?${params}`;
 
         const response = await apiClient.get<CollectionsResponse>(url, {
           signal,

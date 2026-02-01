@@ -34,8 +34,8 @@ logger = Logger(service="collections-get", level=os.environ.get("LOG_LEVEL", "IN
 tracer = Tracer(service="collections-get")
 metrics = Metrics(namespace="medialake", service="collections")
 
-DEFAULT_LIMIT = 20
-MAX_LIMIT = 100
+DEFAULT_LIMIT = 100
+MAX_LIMIT = 200
 
 
 def register_route(app):

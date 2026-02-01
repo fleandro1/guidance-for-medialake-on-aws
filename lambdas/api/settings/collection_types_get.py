@@ -23,8 +23,8 @@ metrics = Metrics(namespace="medialake", service="collection-types")
 
 SYSTEM_PK = "SYSTEM"
 COLLECTION_TYPE_SK_PREFIX = "COLLTYPE#"
-DEFAULT_LIMIT = 20
-MAX_LIMIT = 100
+DEFAULT_LIMIT = 100
+MAX_LIMIT = 200
 
 
 def register_route(app):
