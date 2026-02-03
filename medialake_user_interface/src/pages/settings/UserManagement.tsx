@@ -23,6 +23,7 @@ import { useGetPermissionSets } from "@/api/hooks/usePermissionSets";
 import { useGetGroups } from "@/api/hooks/useGroups";
 import { useApiMutationHandler } from "@/shared/hooks/useApiMutationHandler";
 import { User, CreateUserRequest, UpdateUserRequest } from "@/api/types/api.types";
+import { useAuth } from "@/common/hooks/auth-context";
 
 const UserManagement: React.FC = () => {
   const { t } = useTranslation();
@@ -36,37 +37,27 @@ const UserManagement: React.FC = () => {
   // Feature flags
   const advancedPermissionsEnabled = useFeatureFlag("advanced-permissions-enabled", false);
 
+  // Auth context - wait for auth to be initialized before making API calls
+  const { isAuthenticated, isInitialized } = useAuth();
+  const isReady = isAuthenticated && isInitialized;
+
   const { apiStatus, handleMutation, closeApiStatus } = useApiMutationHandler();
 
-  const { data: users, isLoading: isLoadingUsers, error: usersError } = useGetUsers();
-  const { data: groups, isLoading: isLoadingGroups } = useGetGroups(true); // Always fetch groups when this component loads
-  useGetPermissionSets(true); // Enable API call when this page is loaded
+  const { data: users, isLoading: isLoadingUsers, error: usersError } = useGetUsers(isReady);
+  const { data: groups, isLoading: isLoadingGroups } = useGetGroups(isReady);
+  useGetPermissionSets(isReady);
 
-  // Debug logs
-  console.log("Groups data in UserManagement:", groups);
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const disableUserMutation = useDisableUser();
   const enableUserMutation = useEnableUser();
 
-  // Sync editingUser with fresh data from the users list
-  // This ensures the form always shows the latest user data even if it was updated elsewhere
   React.useEffect(() => {
     if (editingUser && users) {
-      // Find the updated user in the fresh users list
       const updatedUser = users.find((u) => u.username === editingUser.username);
 
       if (updatedUser) {
-        // Log for debugging
-        console.log("Checking if editingUser needs sync:", {
-          editingUserGroups: editingUser.groups,
-          updatedUserGroups: updatedUser.groups,
-          editingUserEmail: editingUser.email,
-          updatedUserEmail: updatedUser.email,
-        });
-
-        // Only update if specific fields have changed to avoid unnecessary re-renders
         const hasChanges =
           JSON.stringify(updatedUser.groups) !== JSON.stringify(editingUser.groups) ||
           updatedUser.email !== editingUser.email ||
@@ -75,15 +66,9 @@ const UserManagement: React.FC = () => {
           updatedUser.enabled !== editingUser.enabled;
 
         if (hasChanges) {
-          console.log("Syncing editingUser with fresh data:", {
-            old: editingUser,
-            new: updatedUser,
-          });
           setEditingUser(updatedUser);
         }
       } else {
-        // If the user no longer exists (was deleted), clear editingUser
-        console.log("User no longer exists, clearing editingUser");
         setEditingUser(undefined);
       }
     }
@@ -101,12 +86,9 @@ const UserManagement: React.FC = () => {
 
   const handleSaveUser = async (userData: CreateUserRequest) => {
     const isNewUser = !editingUser;
-    console.log("handleSaveUser called with:", userData);
-    console.log("isNewUser:", isNewUser);
     setOpenUserForm(false);
 
     if (isNewUser) {
-      console.log("Creating new user with groups:", userData.groups);
       await handleMutation(
         {
           mutation: createUserMutation,
@@ -117,29 +99,11 @@ const UserManagement: React.FC = () => {
             error: t("users.apiMessages.creating.error"),
           },
           onSuccess: (data) => {
-            // Check for group assignment issues and show additional notifications
             if (data?.data) {
-              const { groupsAdded = [], groupsFailed = [], invalidGroups = [] } = data.data;
+              const { groupsFailed = [], invalidGroups = [] } = data.data;
 
-              // Log the results for debugging
-              console.log("User creation completed with group results:", {
-                groupsAdded,
-                groupsFailed,
-                invalidGroups,
-              });
-
-              // Show warnings for failed group assignments
-              if (groupsFailed.length > 0) {
-                console.warn(
-                  `Failed to assign user to ${groupsFailed.length} groups:`,
-                  groupsFailed
-                );
-                // You could show a toast notification here about partial group assignment
-              }
-
-              if (invalidGroups.length > 0) {
-                console.warn(`${invalidGroups.length} groups were invalid:`, invalidGroups);
-                // You could show a toast notification here about invalid groups
+              if (groupsFailed.length > 0 || invalidGroups.length > 0) {
+                // Group assignment had issues but user was created
               }
             }
           },
@@ -311,12 +275,7 @@ const UserManagement: React.FC = () => {
         onClose={() => setOpenUserForm(false)}
         onSave={handleSaveUser}
         user={editingUser}
-        availableGroups={
-          groups?.map((group) => {
-            console.log("Mapping group for UserForm:", group);
-            return { id: group.id, name: group.name };
-          }) || []
-        }
+        availableGroups={groups?.map((group) => ({ id: group.id, name: group.name })) || []}
         isLoadingGroups={isLoadingGroups}
       />
 

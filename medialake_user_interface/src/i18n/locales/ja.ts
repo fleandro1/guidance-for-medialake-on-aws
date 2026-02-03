@@ -133,12 +133,26 @@ export default {
       size: "Size",
     },
   },
+  facetFilter: {
+    title: "フィルター",
+    clearAll: "すべてクリア",
+    activeFilters: "{{count}} 個のアクティブなフィルター",
+    activeFilters_other: "{{count}} 個のアクティブなフィルター",
+    fileType: "ファイルタイプ",
+    format: "フォーマット",
+    noFiltersAvailable: "利用可能なフィルターがありません",
+  },
   assetExplorer: {
     noConnectorSelected: "アセットを表示するにはコネクタを選択してください",
     noAssetsFound: "このコネクタのアセットが見つかりません",
     noIndexedAssets:
       'バケット "{{bucketName}}" のこのコネクタのインデックス化されたアセットが見つかりません。',
     loadingAssets: "アセットを読み込み中...",
+    bucketNotFound: "バケットが見つかりません",
+    invalidBucketName: "無効なバケット名",
+    permissionDenied: "アクセスが拒否されました",
+    pageOutOfRange:
+      "ページ {{requestedPage}} は範囲外です。ページ {{totalPages}} にリダイレクトしています。",
     menu: {
       rename: "名前を変更",
       share: "共有",
@@ -289,6 +303,7 @@ export default {
     },
   },
   search: {
+    clear: "検索をクリア",
     semantic: {
       label: "セマンティック",
       enable: "セマンティック検索を有効にする",
@@ -970,7 +985,8 @@ export default {
       fitToContainer: "Fit to container (maintain aspect ratio)",
       fillContainer: "Fill container (may crop image)",
     },
-    noGroup: "No group",
+    noGroup: "グループなし",
+    loadingGroups: "グループを読み込んでいます...",
     darkMode: "Dark Mode",
     toggleTheme: "Toggle theme",
   },
