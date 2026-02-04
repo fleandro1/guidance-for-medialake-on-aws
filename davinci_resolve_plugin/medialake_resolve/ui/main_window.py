@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QMenuBar,
     QTabWidget,
 )
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QAction, QIcon
 
 from medialake_resolve.core.config import Config
@@ -72,6 +72,19 @@ class MainWindow(QMainWindow):
         # Pending downloads waiting for presigned URLs
         # Maps inventory_id to (asset, variant) tuple
         self._pending_download_urls: Dict[str, tuple] = {}
+        
+        # Timer for minimum progress bar display time
+        self._progress_hide_timer = QTimer(self)
+        self._progress_hide_timer.setSingleShot(True)
+        self._progress_hide_timer.timeout.connect(self._hide_progress_bar)
+        
+        # Animation for smooth progress bar updates
+        self._progress_animation: Optional[QPropertyAnimation] = None
+        
+        # Track batch download progress
+        self._batch_total_files = 0
+        self._batch_completed_files = 0
+        self._batch_failed_files = 0
         
         self._setup_ui()
         self._setup_connections()
@@ -257,7 +270,7 @@ class MainWindow(QMainWindow):
         
         # Search loading indicator (small spinner)
         self._search_loading_indicator = QProgressBar()
-        self._search_loading_indicator.setMaximumWidth(100)
+        self._search_loading_indicator.setMaximumWidth(200)
         self._search_loading_indicator.setMaximumHeight(16)
         self._search_loading_indicator.setTextVisible(False)
         self._search_loading_indicator.setRange(0, 0)  # Indeterminate/busy indicator
@@ -265,12 +278,12 @@ class MainWindow(QMainWindow):
         self._search_loading_indicator.setStyleSheet("""
             QProgressBar {
                 border: 1px solid #555;
-                border-radius: 3px;
+                border-radius: 8px;
                 background-color: #2b2b2b;
             }
             QProgressBar::chunk {
                 background-color: #4a90e2;
-                border-radius: 2px;
+                border-radius: 7px;
             }
         """)
         status_bar.addPermanentWidget(self._search_loading_indicator)
@@ -278,8 +291,16 @@ class MainWindow(QMainWindow):
         # Progress bar (for downloads/uploads)
         self._progress_bar = QProgressBar()
         self._progress_bar.setMaximumWidth(200)
+        self._progress_bar.setMaximumHeight(16)
         self._progress_bar.setVisible(False)
+        self._progress_bar.setTextVisible(True)
+        self._progress_bar.setFormat("%p%")
         status_bar.addPermanentWidget(self._progress_bar)
+        
+        # Create progress animation
+        self._progress_animation = QPropertyAnimation(self._progress_bar, b"value")
+        self._progress_animation.setDuration(500)  # 500ms animation
+        self._progress_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
     
     def _setup_connections(self) -> None:
         """Set up signal connections."""
@@ -762,9 +783,14 @@ class MainWindow(QMainWindow):
         for asset in selected:
             self._download_asset(asset, AssetVariant.ORIGINAL)
         
+        # Initialize batch tracking
+        self._batch_total_files = len(selected)
+        self._batch_completed_files = 0
+        self._batch_failed_files = 0
+        
         self._set_status(f"Requesting download URLs for {len(selected)} assets...")
+        self._search_loading_indicator.setVisible(False)
         self._progress_bar.setVisible(True)
-        self._progress_bar.setRange(0, len(selected))
         self._progress_bar.setValue(0)
     
     def _download_selected_proxies(self) -> None:
@@ -788,9 +814,14 @@ class MainWindow(QMainWindow):
         for asset in with_proxies:
             self._download_asset(asset, AssetVariant.PROXY)
         
+        # Initialize batch tracking
+        self._batch_total_files = len(with_proxies)
+        self._batch_completed_files = 0
+        self._batch_failed_files = 0
+        
         self._set_status(f"Requesting download URLs for {len(with_proxies)} proxies...")
+        self._search_loading_indicator.setVisible(False)
         self._progress_bar.setVisible(True)
-        self._progress_bar.setRange(0, len(with_proxies))
         self._progress_bar.setValue(0)
     
     def _download_asset(self, asset: Asset, variant: AssetVariant) -> None:
@@ -854,27 +885,203 @@ class MainWindow(QMainWindow):
     def _on_download_started(self, task_id: str, asset_name: str) -> None:
         """Handle download started."""
         self._set_status(f"Downloading {asset_name}...")
+        # Hide search indicator and show progress bar (only on first download)
+        if not self._progress_bar.isVisible():
+            self._search_loading_indicator.setVisible(False)
+            self._progress_bar.setVisible(True)
+            self._progress_bar.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #555;
+                    border-radius: 3px;
+                    background-color: #2b2b2b;
+                    text-align: center;
+                }
+                QProgressBar::chunk {
+                    background-color: #4a90e2;
+                    border-radius: 2px;
+                }
+            """)
+            self._progress_bar.setValue(0)
     
     def _on_download_progress(self, task_id: str, progress: float) -> None:
         """Handle download progress."""
-        self._progress_bar.setValue(int(progress))
+        # Individual file progress is not shown - we track batch progress instead
+        # Ensure progress bar is visible
+        if not self._progress_bar.isVisible():
+            self._progress_bar.setVisible(True)
     
     def _on_download_completed(self, task_id: str, file_path: str) -> None:
         """Handle download completed."""
         self._set_status(f"Downloaded to {file_path}")
+        
+        # Update batch progress
+        self._batch_completed_files += 1
+        if self._batch_total_files > 0:
+            batch_progress = int((self._batch_completed_files / self._batch_total_files) * 100)
+            
+            # Animate to the new batch progress
+            if self._progress_animation:
+                self._progress_animation.stop()
+                self._progress_animation.setStartValue(self._progress_bar.value())
+                self._progress_animation.setEndValue(batch_progress)
+                self._progress_animation.start()
+            else:
+                self._progress_bar.setValue(batch_progress)
+            
+            # Check if all expected files are done
+            if self._batch_completed_files >= self._batch_total_files:
+                self._finalize_batch_download()
     
     def _on_download_failed(self, task_id: str, error_message: str) -> None:
         """Handle download failed."""
         self._set_status(f"Download failed: {error_message}")
-    
-    def _on_batch_completed(self, success_count: int, fail_count: int) -> None:
-        """Handle batch download completed."""
-        self._progress_bar.setVisible(False)
         
+        # Update batch progress even for failed files
+        self._batch_completed_files += 1
+        self._batch_failed_files += 1
+        if self._batch_total_files > 0:
+            batch_progress = int((self._batch_completed_files / self._batch_total_files) * 100)
+            
+            # Animate to the new batch progress
+            if self._progress_animation:
+                self._progress_animation.stop()
+                self._progress_animation.setStartValue(self._progress_bar.value())
+                self._progress_animation.setEndValue(batch_progress)
+                self._progress_animation.start()
+            else:
+                self._progress_bar.setValue(batch_progress)
+            
+            # Check if all expected files are done
+            if self._batch_completed_files >= self._batch_total_files:
+                self._finalize_batch_download()
+    
+    def _finalize_batch_download(self) -> None:
+        """Finalize batch download - show completion UI."""
+        success_count = self._batch_completed_files - self._batch_failed_files
+        fail_count = self._batch_failed_files
+        
+        # Ensure we're at 100%
+        if self._progress_animation:
+            self._progress_animation.stop()
+            self._progress_animation.setStartValue(self._progress_bar.value())
+            self._progress_animation.setEndValue(100)
+            self._progress_animation.start()
+        else:
+            self._progress_bar.setValue(100)
+        
+        # Show completion message and color
         if fail_count == 0:
             self._set_status(f"Successfully downloaded {success_count} assets")
+            self._progress_bar.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #4a8b4a;
+                    border-radius: 3px;
+                    background-color: #2b2b2b;
+                    text-align: center;
+                }
+                QProgressBar::chunk {
+                    background-color: #5cb85c;
+                    border-radius: 2px;
+                }
+            """)
         else:
             self._set_status(f"Downloaded {success_count} assets, {fail_count} failed")
+            self._progress_bar.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #f0ad4e;
+                    border-radius: 3px;
+                    background-color: #2b2b2b;
+                    text-align: center;
+                }
+                QProgressBar::chunk {
+                    background-color: #f0ad4e;
+                    border-radius: 2px;
+                }
+            """)
+        
+        # Reset batch tracking
+        self._batch_total_files = 0
+        self._batch_completed_files = 0
+        self._batch_failed_files = 0
+        
+        # Hide after minimum display time
+        if not self._progress_hide_timer.isActive():
+            self._progress_hide_timer.start(1500)  # 1.5 seconds
+
+    def _on_batch_completed(self, success_count: int, fail_count: int) -> None:
+        """Handle batch download completed."""
+        # Ignore batch_completed signals if we haven't finished all our expected files
+        # This handles the case where downloads complete before all presigned URLs arrive
+        if self._batch_total_files > 0 and self._batch_completed_files < self._batch_total_files:
+            return
+        
+        # Ensure we're at 100%
+        if self._progress_animation:
+            self._progress_animation.stop()
+            self._progress_animation.setStartValue(self._progress_bar.value())
+            self._progress_animation.setEndValue(100)
+            self._progress_animation.start()
+        else:
+            self._progress_bar.setValue(100)
+        
+        # Reset batch tracking
+        self._batch_total_files = 0
+        self._batch_completed_files = 0
+        
+        # Show completion message
+        if fail_count == 0:
+            self._set_status(f"Successfully downloaded {success_count} assets")
+            # Show success color
+            self._progress_bar.setValue(100)
+            self._progress_bar.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #4a8b4a;
+                    border-radius: 3px;
+                    background-color: #2b2b2b;
+                    text-align: center;
+                }
+                QProgressBar::chunk {
+                    background-color: #5cb85c;
+                    border-radius: 2px;
+                }
+            """)
+        else:
+            self._set_status(f"Downloaded {success_count} assets, {fail_count} failed")
+            # Show warning color
+            self._progress_bar.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #f0ad4e;
+                    border-radius: 3px;
+                    background-color: #2b2b2b;
+                    text-align: center;
+                }
+                QProgressBar::chunk {
+                    background-color: #f0ad4e;
+                    border-radius: 2px;
+                }
+            """)
+        
+        # Hide after minimum display time
+        if not self._progress_hide_timer.isActive():
+            self._progress_hide_timer.start(1500)  # 1.5 seconds
+    
+    def _hide_progress_bar(self) -> None:
+        """Hide the progress bar and reset its styling."""
+        self._progress_bar.setVisible(False)
+        self._progress_bar.setValue(0)
+        # Reset to default blue styling
+        self._progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #555;
+                border-radius: 3px;
+                background-color: #2b2b2b;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #4a90e2;
+                border-radius: 2px;
+            }
+        """)
     
     def _upload_selected(self) -> None:
         """Upload selected assets from Media Pool."""

@@ -526,6 +526,9 @@ class DownloadImportController(QObject):
             fail_count = len([t for t in self._completed_tasks.values() 
                             if t.status == DownloadStatus.FAILED])
             
+            # Clear completed tasks to prevent duplicate batch_completed signals
+            self._completed_tasks.clear()
+            
             self.batch_completed.emit(success_count, fail_count)
     
     def _emit_queue_updated(self) -> None:
