@@ -91,6 +91,9 @@ class MainWindow(QMainWindow):
         self._upload_completed_files = 0
         self._upload_failed_files = 0
         
+        # Track if connectors have been loaded (lazy loading)
+        self._connectors_loaded = False
+        
         self._setup_ui()
         self._setup_connections()
         self._try_auto_connect()
@@ -331,6 +334,16 @@ class MainWindow(QMainWindow):
         # Upload panel
         self._upload_panel.upload_requested.connect(self._on_upload_requested)
         self._upload_panel.bucket_refresh_requested.connect(self._refresh_buckets)
+        
+        # Tab widget - lazy load connectors when upload tab is first accessed
+        self._tab_widget.currentChanged.connect(self._on_tab_changed)
+    
+    def _on_tab_changed(self, index: int) -> None:
+        """Handle tab change - lazy load connectors when upload tab is accessed."""
+        # Check if upload tab (index 1) is accessed and connectors haven't been loaded yet
+        if index == 1 and not self._connectors_loaded and self._api_client:
+            self._refresh_buckets()
+            self._connectors_loaded = True
     
     def _try_auto_connect(self) -> None:
         """Try to auto-connect with saved credentials."""
@@ -437,10 +450,9 @@ class MainWindow(QMainWindow):
         # Try to connect to Resolve
         self._connect_to_resolve()
         
-        # Load initial data
+        # Load initial data (connectors loaded lazily when upload tab is accessed)
         self._api_client.get_collections()
         self._load_assets()
-        self._refresh_buckets()
     
     def _disconnect(self) -> None:
         """Disconnect from Media Lake."""
@@ -457,6 +469,9 @@ class MainWindow(QMainWindow):
         if self._upload_controller:
             self._upload_controller.cancel_all()
             self._upload_controller = None
+        
+        # Reset connectors loaded flag for lazy loading
+        self._connectors_loaded = False
         
         self._connection_label.setText("Not connected")
         self._connection_label.setStyleSheet(
