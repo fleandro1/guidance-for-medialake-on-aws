@@ -601,11 +601,6 @@ class UploadPanel(QWidget):
         self._upload_button.clicked.connect(self._on_upload_clicked)
         layout.addWidget(self._upload_button)
         
-        # Progress bar
-        self._progress_bar = QProgressBar()
-        self._progress_bar.setVisible(False)
-        layout.addWidget(self._progress_bar)
-        
         # Status label
         self._status_label = QLabel("")
         layout.addWidget(self._status_label)
@@ -656,15 +651,6 @@ class UploadPanel(QWidget):
             self._upload_button.setEnabled(False)
             self._status_label.setText("")
     
-    def set_progress(self, progress: float) -> None:
-        """Set upload progress.
-        
-        Args:
-            progress: Progress value (0-100).
-        """
-        self._progress_bar.setVisible(True)
-        self._progress_bar.setValue(int(progress))
-    
     def set_status(self, message: str) -> None:
         """Set status message.
         
@@ -676,7 +662,6 @@ class UploadPanel(QWidget):
     def reset(self) -> None:
         """Reset the panel."""
         self._upload_button.setEnabled(False)
-        self._progress_bar.setVisible(False)
         self._status_label.setText("")
     
     def _on_add_from_media_pool(self) -> None:

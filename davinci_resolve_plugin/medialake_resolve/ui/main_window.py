@@ -86,6 +86,11 @@ class MainWindow(QMainWindow):
         self._batch_completed_files = 0
         self._batch_failed_files = 0
         
+        # Track batch upload progress
+        self._upload_total_files = 0
+        self._upload_completed_files = 0
+        self._upload_failed_files = 0
+        
         self._setup_ui()
         self._setup_connections()
         self._try_auto_connect()
@@ -278,12 +283,12 @@ class MainWindow(QMainWindow):
         self._search_loading_indicator.setStyleSheet("""
             QProgressBar {
                 border: 1px solid #555;
-                border-radius: 8px;
-                background-color: #2b2b2b;
+                border-radius: 2px;
+                background-color: #1a1a1a;
             }
             QProgressBar::chunk {
-                background-color: #4a90e2;
-                border-radius: 7px;
+                background-color: #9a9a9a;
+                border-radius: 2px;
             }
         """)
         status_bar.addPermanentWidget(self._search_loading_indicator)
@@ -892,12 +897,13 @@ class MainWindow(QMainWindow):
             self._progress_bar.setStyleSheet("""
                 QProgressBar {
                     border: 1px solid #555;
-                    border-radius: 3px;
-                    background-color: #2b2b2b;
+                    border-radius: 2px;
+                    background-color: #1a1a1a;
                     text-align: center;
+                    color: #ffffff;
                 }
                 QProgressBar::chunk {
-                    background-color: #4a90e2;
+                    background-color: #3a7b7c;
                     border-radius: 2px;
                 }
             """)
@@ -974,13 +980,14 @@ class MainWindow(QMainWindow):
             self._set_status(f"Successfully downloaded {success_count} assets")
             self._progress_bar.setStyleSheet("""
                 QProgressBar {
-                    border: 1px solid #4a8b4a;
-                    border-radius: 3px;
-                    background-color: #2b2b2b;
+                    border: 1px solid #555;
+                    border-radius: 2px;
+                    background-color: #1a1a1a;
                     text-align: center;
+                    color: #ffffff;
                 }
                 QProgressBar::chunk {
-                    background-color: #5cb85c;
+                    background-color: #9a9a9a;
                     border-radius: 2px;
                 }
             """)
@@ -989,9 +996,10 @@ class MainWindow(QMainWindow):
             self._progress_bar.setStyleSheet("""
                 QProgressBar {
                     border: 1px solid #f0ad4e;
-                    border-radius: 3px;
-                    background-color: #2b2b2b;
+                    border-radius: 2px;
+                    background-color: #1a1a1a;
                     text-align: center;
+                    color: #ffffff;
                 }
                 QProgressBar::chunk {
                     background-color: #f0ad4e;
@@ -1035,13 +1043,14 @@ class MainWindow(QMainWindow):
             self._progress_bar.setValue(100)
             self._progress_bar.setStyleSheet("""
                 QProgressBar {
-                    border: 1px solid #4a8b4a;
-                    border-radius: 3px;
-                    background-color: #2b2b2b;
+                    border: 1px solid #555;
+                    border-radius: 2px;
+                    background-color: #1a1a1a;
                     text-align: center;
+                    color: #ffffff;
                 }
                 QProgressBar::chunk {
-                    background-color: #5cb85c;
+                    background-color: #9a9a9a;
                     border-radius: 2px;
                 }
             """)
@@ -1051,9 +1060,10 @@ class MainWindow(QMainWindow):
             self._progress_bar.setStyleSheet("""
                 QProgressBar {
                     border: 1px solid #f0ad4e;
-                    border-radius: 3px;
-                    background-color: #2b2b2b;
+                    border-radius: 2px;
+                    background-color: #1a1a1a;
                     text-align: center;
+                    color: #ffffff;
                 }
                 QProgressBar::chunk {
                     background-color: #f0ad4e;
@@ -1069,16 +1079,17 @@ class MainWindow(QMainWindow):
         """Hide the progress bar and reset its styling."""
         self._progress_bar.setVisible(False)
         self._progress_bar.setValue(0)
-        # Reset to default blue styling
+        # Reset to default gray styling
         self._progress_bar.setStyleSheet("""
             QProgressBar {
                 border: 1px solid #555;
-                border-radius: 3px;
-                background-color: #2b2b2b;
+                border-radius: 2px;
+                background-color: #1a1a1a;
                 text-align: center;
+                color: #ffffff;
             }
             QProgressBar::chunk {
-                background-color: #4a90e2;
+                background-color: #9a9a9a;
                 border-radius: 2px;
             }
         """)
@@ -1196,9 +1207,27 @@ class MainWindow(QMainWindow):
         # Queue uploads
         self._upload_controller.queue_uploads(file_paths, bucket_name)
         
+        # Initialize upload batch tracking
+        self._upload_total_files = len(file_paths)
+        self._upload_completed_files = 0
+        self._upload_failed_files = 0
+        
         self._set_status(f"Uploading {len(file_paths)} files to {bucket_name}...")
+        self._search_loading_indicator.setVisible(False)
         self._progress_bar.setVisible(True)
-        self._progress_bar.setRange(0, len(file_paths))
+        self._progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #555;
+                border-radius: 2px;
+                background-color: #1a1a1a;
+                text-align: center;
+                color: #ffffff;
+            }
+            QProgressBar::chunk {
+                background-color: #9a9a9a;
+                border-radius: 2px;
+            }
+        """)
         self._progress_bar.setValue(0)
     
     def _refresh_buckets(self) -> None:
@@ -1292,28 +1321,118 @@ class MainWindow(QMainWindow):
     def _on_upload_started(self, task_id: str, file_name: str) -> None:
         """Handle upload started."""
         self._set_status(f"Uploading {file_name}...")
+        # Hide search indicator and show progress bar (only on first upload)
+        if not self._progress_bar.isVisible():
+            self._search_loading_indicator.setVisible(False)
+            self._progress_bar.setVisible(True)
+            self._progress_bar.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #555;
+                    border-radius: 2px;
+                    background-color: #1a1a1a;
+                    text-align: center;
+                    color: #ffffff;
+                }
+                QProgressBar::chunk {
+                    background-color: #9a9a9a;
+                    border-radius: 2px;
+                }
+            """)
+            self._progress_bar.setValue(0)
     
     def _on_upload_progress(self, task_id: str, progress: float) -> None:
         """Handle upload progress."""
-        self._upload_panel.set_progress(progress)
+        # Individual file progress is not shown - we track batch progress instead
+        # Ensure progress bar is visible
+        if not self._progress_bar.isVisible():
+            self._progress_bar.setVisible(True)
     
     def _on_upload_completed(self, task_id: str, file_path: str) -> None:
         """Handle upload completed."""
         file_name = file_path.split("/")[-1]
         self._set_status(f"Uploaded {file_name}")
+        
+        # Update batch progress
+        self._upload_completed_files += 1
+        if self._upload_total_files > 0:
+            batch_progress = int((self._upload_completed_files / self._upload_total_files) * 100)
+            
+            # Animate to the new batch progress
+            if self._progress_animation:
+                self._progress_animation.stop()
+                self._progress_animation.setStartValue(self._progress_bar.value())
+                self._progress_animation.setEndValue(batch_progress)
+                self._progress_animation.start()
+            else:
+                self._progress_bar.setValue(batch_progress)
+            
+            # Check if all expected files are done
+            if self._upload_completed_files >= self._upload_total_files:
+                self._finalize_batch_upload()
     
     def _on_upload_failed(self, task_id: str, error_message: str) -> None:
         """Handle upload failed."""
         self._set_status(f"Upload failed: {error_message}")
+        
+        # Update batch progress even for failed files
+        self._upload_completed_files += 1
+        self._upload_failed_files += 1
+        if self._upload_total_files > 0:
+            batch_progress = int((self._upload_completed_files / self._upload_total_files) * 100)
+            
+            # Animate to the new batch progress
+            if self._progress_animation:
+                self._progress_animation.stop()
+                self._progress_animation.setStartValue(self._progress_bar.value())
+                self._progress_animation.setEndValue(batch_progress)
+                self._progress_animation.start()
+            else:
+                self._progress_bar.setValue(batch_progress)
+            
+            # Check if all expected files are done
+            if self._upload_completed_files >= self._upload_total_files:
+                self._finalize_batch_upload()
     
     def _on_upload_batch_completed(self, success_count: int, fail_count: int) -> None:
         """Handle batch upload completed."""
-        self._progress_bar.setVisible(False)
+        # Ignore batch_completed signals if we haven't finished all our expected files
+        if self._upload_total_files > 0 and self._upload_completed_files < self._upload_total_files:
+            return
         
+        # If finalize was already called by individual completion handlers, skip
+        if self._upload_total_files == 0:
+            return
+        
+        self._finalize_batch_upload()
+    
+    def _finalize_batch_upload(self) -> None:
+        """Finalize batch upload - show completion UI."""
+        success_count = self._upload_completed_files - self._upload_failed_files
+        fail_count = self._upload_failed_files
+        
+        # Ensure we're at 100%
+        if self._progress_animation:
+            self._progress_animation.stop()
+            self._progress_animation.setStartValue(self._progress_bar.value())
+            self._progress_animation.setEndValue(100)
+            self._progress_animation.start()
+        else:
+            self._progress_bar.setValue(100)
+        
+        # Show completion message
         if fail_count == 0:
             self._set_status(f"Successfully uploaded {success_count} files")
         else:
             self._set_status(f"Uploaded {success_count} files, {fail_count} failed")
+        
+        # Reset upload batch tracking
+        self._upload_total_files = 0
+        self._upload_completed_files = 0
+        self._upload_failed_files = 0
+        
+        # Hide after minimum display time
+        if not self._progress_hide_timer.isActive():
+            self._progress_hide_timer.start(1500)  # 1.5 seconds
     
     def _on_token_expired(self) -> None:
         """Handle token expired."""
