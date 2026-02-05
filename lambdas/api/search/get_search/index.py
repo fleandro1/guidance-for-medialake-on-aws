@@ -389,15 +389,15 @@ def build_search_query(params: SearchParams) -> Dict:
                 #
                 # We will uncomment this block to re-enable metadata search for testing purposes - 2025-02-01
                 #
-                {
-                    "multi_match": {
-                        "query": clean_query,
-                        "fields": ["Metadata.*"],
-                        "type": "best_fields",
-                        "boost": 0.8,
-                        "lenient": True,
-                    }
-                },
+                # {
+                #     "multi_match": {
+                #         "query": clean_query,
+                #         "fields": ["Metadata.*"],
+                #         "type": "best_fields",
+                #         "boost": 0.8,
+                #         "lenient": True,
+                #     }
+                # },
             ]
 
         query["bool"]["minimum_should_match"] = 1
