@@ -585,18 +585,15 @@ def build_search_query(params: SearchParams) -> Dict:
                 },
                 # Search specific metadata fields instead of Metadata.* to avoid field expansion limit
                 # (OpenSearch limit: 1024 fields, Metadata.* expanded to 1065+ fields)
-                {
-                    "multi_match": {
-                        "query": clean_query,
-                        "fields": [
-                            "Metadata.Consolidated.*",
-                            "Metadata.Embedded.S3.*",
-                        ],
-                        "type": "best_fields",
-                        "boost": 0.8,
-                        "lenient": True,
-                    }
-                },
+                # {
+                #     "multi_match": {
+                #         "query": clean_query,
+                #         "fields": ["Metadata.*"],
+                #         "type": "best_fields",
+                #         "boost": 0.8,
+                #         "lenient": True,
+                #     }
+                # },
             ]
 
         query["bool"]["minimum_should_match"] = 1
