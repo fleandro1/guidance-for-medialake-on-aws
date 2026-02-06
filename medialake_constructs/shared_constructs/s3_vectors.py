@@ -8,8 +8,10 @@ from aws_cdk import CfnOutput, CustomResource, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_logs as logs
+from aws_cdk import aws_s3vectors as s3vectors
 from aws_cdk import custom_resources as cr
 from constructs import Construct
+
 
 from medialake_constructs.shared_constructs.lambda_base import Lambda, LambdaConfig
 
