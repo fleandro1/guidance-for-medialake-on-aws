@@ -39,91 +39,52 @@ class S3VectorCluster(Construct):
         # Create Lambda function for S3 Vector bucket and index creation
         create_s3_vector_lambda = Lambda(
             self,
-            "MediaLakeS3VectorCreationFunction",
-            config=LambdaConfig(
-                entry="lambdas/back_end/create_s3_vector_index",
-                lambda_handler="handler",
-                vpc=props.vpc,
-                security_groups=(
-                    [props.security_group] if props.security_group else None
-                ),
-                timeout_minutes=5,
-                environment_variables={
-                    "VECTOR_BUCKET_NAME": self._bucket_name,
-                    "INDEX_NAMES": ",".join(props.collection_indexes),
-                    "REGION": self.region,
-                    "VECTOR_DIMENSION": str(self._vector_dimension),
-                },
+            "VectorBucket",
+            vector_bucket_name=self._bucket_name,
+            encryption_configuration=s3vectors.CfnVectorBucket.EncryptionConfigurationProperty(
+                sse_type="AES256"  # Default to S3-managed encryption per FR-5
             ),
         )
 
-        # Add IAM permissions for S3 Vector operations
-        create_s3_vector_lambda.function.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=[
-                    "s3vectors:CreateVectorBucket",
-                    "s3vectors:GetVectorBucket",
-                    "s3vectors:ListVectorBuckets",
-                    "s3vectors:DeleteVectorBucket",
-                    "s3vectors:CreateIndex",
-                    "s3vectors:GetIndex",
-                    "s3vectors:ListIndexes",
-                    "s3vectors:DeleteIndex",
-                    "s3vectors:PutVectors",
-                    "s3vectors:GetVectors",
-                    "s3vectors:DeleteVectors",
-                    "s3vectors:QueryVectors",
-                ],
-                resources=[
-                    f"arn:aws:s3vectors:{self.region}:{self.account_id}:bucket/{self._bucket_name}",
-                    f"arn:aws:s3vectors:{self.region}:{self.account_id}:bucket/{self._bucket_name}/*",
-                ],
-            )
+        # Apply removal policy based on environment per FR-6
+        # RETAIN for production to prevent data loss, DESTROY for dev/staging
+        # NOTE: Even with DESTROY policy, the bucket must be empty before deletion
+        # The provisioned_resource_cleanup Lambda handles emptying the bucket/indexes
+        removal_policy = (
+            RemovalPolicy.RETAIN
+            if config.environment == "prod"
+            else RemovalPolicy.DESTROY
         )
+        self._vector_bucket.apply_removal_policy(removal_policy)
 
-        # Add VPC permissions if using VPC
-        if props.vpc:
-            create_s3_vector_lambda.function.add_to_role_policy(
-                iam.PolicyStatement(
-                    effect=iam.Effect.ALLOW,
-                    actions=[
-                        "ec2:CreateNetworkInterface",
-                        "ec2:DescribeNetworkInterfaces",
-                        "ec2:DeleteNetworkInterface",
-                    ],
-                    resources=["*"],
-                )
+        # Create vector indexes for each collection per FR-2 and US-4
+        # DECISION: Loop through collection_indexes to support multiple indexes
+        # per design.md Section 1 - enables different embedding types in separate indexes
+        self._index_resources = []
+        for index_name in props.collection_indexes:
+            index = s3vectors.CfnIndex(
+                self,
+                f"Index-{index_name}",
+                vector_bucket_name=self._bucket_name,
+                index_name=index_name,
+                dimension=self._vector_dimension,
+                data_type="float32",  # Standard data type for embeddings
+                distance_metric="cosine",  # Cosine similarity for semantic search
+                encryption_configuration=s3vectors.CfnIndex.EncryptionConfigurationProperty(
+                    sse_type="AES256"  # Match bucket encryption per FR-5
+                ),
             )
 
-        # Create a custom resource provider that triggers the Lambda for S3 Vector setup
-        provider = cr.Provider(
-            self,
-            "S3VectorCreateResourceProvider",
-            on_event_handler=create_s3_vector_lambda.function,
-            log_retention=logs.RetentionDays.ONE_WEEK,
-        )
+            # Ensure index depends on bucket per FR-6 (proper creation/deletion order)
+            # CloudFormation will create bucket first, then indexes
+            # Deletion happens in reverse: indexes first, then bucket
+            index.add_dependency(self._vector_bucket)
 
-        # Generate hash of Lambda code for change detection
-        lambda_code = Path(
-            "lambdas/back_end/create_s3_vector_index/index.py"
-        ).read_text(encoding="utf-8")
-        code_hash = hashlib.sha256(lambda_code.encode()).hexdigest()
+            # Apply same removal policy as bucket
+            index.apply_removal_policy(removal_policy)
 
-        # Create custom resource to trigger S3 Vector setup
-        create_s3_vector_resource = CustomResource(
-            self,
-            "S3VectorCreateResource",
-            service_token=provider.service_token,
-            properties={
-                "code_hash": code_hash,
-                "timestamp": str(int(time.time())),
-                "bucket_name": self._bucket_name,
-                "vector_dimension": self._vector_dimension,
-                "indexes": ",".join(props.collection_indexes),
-            },
-            resource_type="Custom::S3VectorCreateIndex",
-        )
+            # Store reference for potential future use
+            self._index_resources.append(index)
 
         # Store properties for access by other constructs (already set above)
         self._indexes = props.collection_indexes

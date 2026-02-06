@@ -130,11 +130,24 @@ export default {
       size: "Size",
     },
   },
+  facetFilter: {
+    title: "筛选器",
+    clearAll: "全部清除",
+    activeFilters: "{{count}} 个活动筛选器",
+    activeFilters_other: "{{count}} 个活动筛选器",
+    fileType: "文件类型",
+    format: "格式",
+    noFiltersAvailable: "没有可用的筛选器",
+  },
   assetExplorer: {
     noConnectorSelected: "选择连接器以查看资产",
     noAssetsFound: "未找到此连接器的资产",
     noIndexedAssets: '未在存储桶 "{{bucketName}}" 中找到此连接器的索引资产。',
     loadingAssets: "正在加载资产...",
+    bucketNotFound: "未找到存储桶",
+    invalidBucketName: "无效的存储桶名称",
+    permissionDenied: "权限被拒绝",
+    pageOutOfRange: "第 {{requestedPage}} 页超出范围。正在重定向到第 {{totalPages}} 页。",
     menu: {
       rename: "重命名",
       share: "分享",
@@ -252,6 +265,7 @@ export default {
     },
   },
   search: {
+    clear: "清除搜索",
     semantic: {
       label: "语义",
       enable: "启用语义搜索",
@@ -924,7 +938,8 @@ export default {
       flow: "Flow",
       utilities: "Utilities",
     },
-    noGroup: "No group",
+    noGroup: "无组",
+    loadingGroups: "正在获取组...",
     darkMode: "Dark Mode",
     toggleTheme: "Toggle theme",
   },

@@ -135,12 +135,26 @@ export default {
       size: "Tamanho",
     },
   },
+  facetFilter: {
+    title: "Filtros",
+    clearAll: "Limpar tudo",
+    activeFilters: "{{count}} filtro ativo",
+    activeFilters_other: "{{count}} filtros ativos",
+    fileType: "Tipo de arquivo",
+    format: "Formato",
+    noFiltersAvailable: "Nenhum filtro disponível",
+  },
   assetExplorer: {
     noConnectorSelected: "Selecione um conector para visualizar os ativos",
     noAssetsFound: "Nenhum ativo encontrado para este conector",
     noIndexedAssets:
       'Nenhum ativo indexado foi encontrado para este conector com o bucket "{{bucketName}}".',
     loadingAssets: "Carregando ativos...",
+    bucketNotFound: "Bucket não encontrado",
+    invalidBucketName: "Nome de bucket inválido",
+    permissionDenied: "Permissão negada",
+    pageOutOfRange:
+      "A página {{requestedPage}} está fora do intervalo. Redirecionando para a página {{totalPages}}.",
     menu: {
       rename: "Renomear",
       share: "Compartilhar",
@@ -258,6 +272,7 @@ export default {
     },
   },
   search: {
+    clear: "Limpar pesquisa",
     semantic: {
       label: "Semântica",
       enable: "Ativar pesquisa semântica",
@@ -936,7 +951,8 @@ export default {
     },
     root: "Raiz",
     folder: "Folder",
-    noGroup: "No group",
+    noGroup: "Sem grupo",
+    loadingGroups: "Obtendo grupos...",
     darkMode: "Dark Mode",
     toggleTheme: "Toggle theme",
   },

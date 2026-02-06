@@ -168,9 +168,10 @@ class ResvgCliLayer(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
 
-        if "CI" in os.environ:
-            # In CI, use a prebuilt zip under dist/
-            code = lambda_.Code.from_asset("dist/lambdas/layers/resvg")
+        ci_asset_path = "dist/lambdas/layers/resvg"
+        if "CI" in os.environ and os.path.exists(ci_asset_path):
+            # Use pre-built layer in CI for faster deployments
+            code = lambda_.Code.from_asset(ci_asset_path)
         else:
             # Build from source in a container each time
             code = lambda_.Code.from_asset(
@@ -205,7 +206,247 @@ class ResvgCliLayer(Construct):
             self,
             "ResvgCliLayer",
             layer_version_name="resvg-cli-layer",
-            description="A Lambda layer containing the resvg CLI (SVG→PNG converter)",
+            description="Lambda layer with resvg CLI for SVG to PNG conversion",
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_architectures=[
+                lambda_.Architecture.X86_64,
+                lambda_.Architecture.ARM_64,
+            ],
+            code=code,
+        )
+
+
+class NumpyLayer(Construct):
+    """
+    NumPy library layer for scientific computing.
+
+    Provides NumPy for numerical operations, array processing, and
+    mathematical computations in Lambda functions.
+
+    Supports both CI pre-built assets and local Docker-based builds.
+    Optimized for Lambda by removing unnecessary cache files.
+
+    Security: Uses official Amazon Linux 2023 base image. Installs only
+    binary wheels (--only-binary) to prevent compilation of untrusted code.
+    Strips debug symbols to reduce attack surface.
+
+    Attributes:
+        layer: The Lambda layer version containing NumPy
+    """
+
+    def __init__(self, scope: Construct, id: str, **kwargs):
+        super().__init__(scope, id, **kwargs)
+
+        ci_asset_path = "dist/lambdas/layers/numpy"
+        if "CI" in os.environ and os.path.exists(ci_asset_path):
+            # Use pre-built layer in CI for faster deployments
+            code = lambda_.Code.from_asset(ci_asset_path)
+        else:
+            # Build locally with Docker for development
+            code = lambda_.Code.from_asset(
+                path=".",
+                bundling=BundlingOptions(
+                    image=DockerImage.from_registry(
+                        "public.ecr.aws/amazonlinux/amazonlinux:2023"
+                    ),
+                    user="root",
+                    command=[
+                        "/bin/bash",
+                        "-c",
+                        """
+                        set -euo pipefail
+
+                        # Install Python 3.12 and pip (matches Lambda runtime)
+                        yum -y update
+                        yum -y install python3.12 python3.12-pip findutils
+
+                        # Create layer directory structure
+                        mkdir -p /asset-output/python
+
+                        # Install numpy with platform-specific wheels for Lambda Python 3.12
+                        # --only-binary ensures no compilation of untrusted code
+                        # --platform ensures compatibility with Lambda execution environment
+                        python3.12 -m pip install \
+                          --platform manylinux_2_28_x86_64 \
+                          --target /asset-output/python \
+                          --implementation cp \
+                          --python-version 3.12 \
+                          --only-binary=:all: \
+                          --upgrade \
+                          numpy
+
+                        cd /asset-output/python
+
+                        # Remove cache files to reduce layer size
+                        find . -type d -name "__pycache__" -exec rm -rf {} + || true
+                        find . -name "*.pyc" -delete || true
+                        find . -name "*.pyo" -delete || true
+
+                        # Remove tests and documentation to reduce layer size
+                        find . -type d -name "tests" -exec rm -rf {} + || true
+                        find . -type d -name "test" -exec rm -rf {} + || true
+                        find . -type d -name "doc" -exec rm -rf {} + || true
+                        find . -type d -name "docs" -exec rm -rf {} + || true
+                        find . -type d -name "examples" -exec rm -rf {} + || true
+
+                        # CRITICAL: Remove setup/build artifacts that cause import errors
+                        # These files can interfere with Python's import system
+                        find . -name "setup.py" -delete || true
+                        find . -name "setup.cfg" -delete || true
+                        find . -name "pyproject.toml" -delete || true
+                        find . -name "MANIFEST.in" -delete || true
+
+                        # Strip debug symbols from shared objects to reduce size and attack surface
+                        find . -name "*.so*" -type f -exec strip --strip-debug {} \\; 2>/dev/null || true
+                        """,
+                    ],
+                ),
+            )
+
+        self.layer = lambda_.LayerVersion(
+            self,
+            "NumpyLayer",
+            layer_version_name="numpy-layer",
+            description="Lambda layer with NumPy for scientific computing and array operations",
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            compatible_architectures=[
+                lambda_.Architecture.X86_64,
+                lambda_.Architecture.ARM_64,
+            ],
+            code=code,
+        )
+
+
+class OpenEXRLayer(Construct):
+    """
+    OpenEXR library layer for HDR image processing.
+
+    Provides OpenEXR 3.4.4 with all required C++ dependencies for reading
+    and writing high dynamic range (HDR) image files in the EXR format.
+
+    Built specifically for AWS Lambda Amazon Linux 2023 environment.
+    Includes all necessary shared libraries (libOpenEXR, libImath, etc.).
+
+    **Important**: Requires NumpyLayer to be attached to the Lambda function
+    as well, as OpenEXR depends on NumPy for array operations.
+
+    Security: Pins specific OpenEXR version (3.4.4) for reproducible builds.
+    Compiles from source with --no-binary flag to ensure compatibility with
+    Lambda runtime. Git is required during build to fetch OpenJPH dependency.
+
+    Supports both CI pre-built assets and local Docker-based builds.
+
+    Attributes:
+        layer: The Lambda layer version containing OpenEXR and dependencies
+    """
+
+    def __init__(self, scope: Construct, id: str, **kwargs):
+        super().__init__(scope, id, **kwargs)
+
+        ci_asset_path = "dist/lambdas/layers/openexr"
+        if "CI" in os.environ and os.path.exists(ci_asset_path):
+            # Use pre-built layer in CI
+            code = lambda_.Code.from_asset(ci_asset_path)
+        else:
+            # Build from source locally
+            code = lambda_.Code.from_asset(
+                path=".",
+                bundling=BundlingOptions(
+                    image=DockerImage.from_registry(
+                        "public.ecr.aws/amazonlinux/amazonlinux:2023"
+                    ),
+                    user="root",
+                    command=[
+                        "/bin/bash",
+                        "-c",
+                        """
+                        set -euo pipefail
+
+                        # Install Python 3.12 and dependencies
+                        yum -y update
+                        yum -y install python3.12 python3.12-pip findutils
+
+                        # Create layer directory structure
+                        mkdir -p /asset-output/python
+
+                        # Try to install with platform-specific wheels first
+                        if python3.12 -m pip install \
+                          --platform manylinux_2_28_x86_64 \
+                          --target /asset-output/python \
+                          --implementation cp \
+                          --python-version 3.12 \
+                          --only-binary=:all: \
+                          OpenEXR==3.4.4 2>/dev/null; then
+                            echo 'Successfully installed OpenEXR from pre-built wheel'
+                        else
+                            echo 'Pre-built wheel not available, trying manylinux2014...'
+                            if python3.12 -m pip install \
+                              --platform manylinux2014_x86_64 \
+                              --target /asset-output/python \
+                              --implementation cp \
+                              --python-version 3.12 \
+                              --only-binary=:all: \
+                              OpenEXR==3.4.4 2>/dev/null; then
+                                echo 'Successfully installed OpenEXR from manylinux2014 wheel'
+                            else
+                                echo 'No compatible wheel found, building from source...'
+                                yum -y install python3.12-devel gcc-c++ cmake make \
+                                    zlib-devel openexr-devel openexr-libs imath-devel \
+                                    git tar gzip wget
+
+                                python3.12 -m pip install OpenEXR==3.4.4 --no-binary OpenEXR -t /asset-output/python
+
+                                echo 'Copying required shared libraries...'
+                                mkdir -p /asset-output/lib
+                                cp -P /usr/lib64/libOpenEXR*.so* /asset-output/lib/ || true
+                                cp -P /usr/lib64/libImath*.so* /asset-output/lib/ || true
+                                cp -P /usr/lib64/libIex*.so* /asset-output/lib/ || true
+                                cp -P /usr/lib64/libIlmThread*.so* /asset-output/lib/ || true
+                            fi
+                        fi
+
+                        cd /asset-output
+
+                        # Remove cache files
+                        find python -type d -name "__pycache__" -exec rm -rf {} + || true
+                        find python -name "*.pyc" -delete || true
+                        find python -name "*.pyo" -delete || true
+
+                        # Remove tests, docs, examples
+                        find python -type d -name "tests" -exec rm -rf {} + || true
+                        find python -type d -name "test" -exec rm -rf {} + || true
+                        find python -type d -name "doc" -exec rm -rf {} + || true
+                        find python -type d -name "docs" -exec rm -rf {} + || true
+                        find python -type d -name "examples" -exec rm -rf {} + || true
+                        find python -type d -name "benchmarks" -exec rm -rf {} + || true
+
+                        # CRITICAL: Remove setup/build artifacts that cause import errors
+                        find python -name "setup.py" -delete || true
+                        find python -name "setup.cfg" -delete || true
+                        find python -name "pyproject.toml" -delete || true
+                        find python -name "MANIFEST.in" -delete || true
+
+                        # Remove cmake build artifacts
+                        find python -type d -name "CMakeFiles" -exec rm -rf {} + || true
+                        find python -name "CMakeCache.txt" -delete || true
+                        find python -name "cmake_install.cmake" -delete || true
+                        find python -name "Makefile" -delete || true
+
+                        # Remove static libraries
+                        find . -name "*.a" -delete || true
+
+                        # Strip debug symbols from .so files
+                        find . -name "*.so*" -type f -exec strip --strip-debug {} \\; 2>/dev/null || true
+                        """,
+                    ],
+                ),
+            )
+
+        self.layer = lambda_.LayerVersion(
+            self,
+            "OpenEXRLayer",
+            layer_version_name="openexr-layer",
+            description="Lambda layer with OpenEXR 3.4.4 for HDR image processing (requires NumpyLayer)",
             compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
             compatible_architectures=[
                 lambda_.Architecture.X86_64,
@@ -227,16 +468,16 @@ class FFProbeLayer(Construct):
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
 
-        if "CI" in os.environ:
+        ci_asset_path = "dist/lambdas/layers/ffprobe"
+        if "CI" in os.environ and os.path.exists(ci_asset_path):
+            # Use pre-built layer in CI
             self.layer = lambda_.LayerVersion(
                 self,
                 "FFProbeLayer",
                 layer_version_name="ffprobe-layer",
-                compatible_runtimes=[
-                    lambda_.Runtime.PYTHON_3_12,
-                ],
-                description="Layer containing ffprobe binary",
-                code=lambda_.Code.from_asset("dist/lambdas/layers/ffprobe"),
+                compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+                description="Lambda layer with ffprobe for media metadata extraction",
+                code=lambda_.Code.from_asset(ci_asset_path),
             )
         else:
             self.layer = lambda_.LayerVersion(
@@ -296,15 +537,16 @@ class FFmpegLayer(Construct):
         """
         super().__init__(scope, id, **kwargs)
 
-        # When running in CI or if you already have a built asset, use that asset.
-        if "CI" in os.environ:
+        ci_asset_path = "dist/lambdas/layers/ffmpeg"
+        if "CI" in os.environ and os.path.exists(ci_asset_path):
+            # Use pre-built layer in CI
             self.layer = lambda_.LayerVersion(
                 self,
                 "FFmpegLayer",
                 layer_version_name="ffmpeg-layer",
                 compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
-                description="Layer containing FFmpeg binary",
-                code=lambda_.Code.from_asset("dist/lambdas/layers/ffmpeg"),
+                description="Lambda layer with FFmpeg for video/audio processing",
+                code=lambda_.Code.from_asset(ci_asset_path),
             )
         else:
             self.layer = lambda_.LayerVersion(

@@ -131,11 +131,24 @@ export default {
       size: "Size",
     },
   },
+  facetFilter: {
+    title: "מסננים",
+    clearAll: "נקה הכל",
+    activeFilters: "מסנן פעיל {{count}}",
+    activeFilters_other: "מסננים פעילים {{count}}",
+    fileType: "סוג קובץ",
+    format: "פורמט",
+    noFiltersAvailable: "אין מסננים זמינים",
+  },
   assetExplorer: {
     noConnectorSelected: "בחר מחבר כדי לצפות בנכסים",
     noAssetsFound: "לא נמצאו נכסים עבור מחבר זה",
     noIndexedAssets: 'לא נמצאו נכסים ממודדים עבור מחבר זה עם הדלי "{{bucketName}}".',
     loadingAssets: "טוען נכסים...",
+    bucketNotFound: "הדלי לא נמצא",
+    invalidBucketName: "שם דלי לא חוקי",
+    permissionDenied: "הרשאה נדחתה",
+    pageOutOfRange: "עמוד {{requestedPage}} מחוץ לטווח. מפנה לעמוד {{totalPages}}.",
     menu: {
       rename: "שנה שם",
       share: "שתף",
@@ -253,6 +266,7 @@ export default {
     },
   },
   search: {
+    clear: "חיפוש ברור",
     semantic: {
       label: "סמנטי",
       enable: "הפעל חיפוש סמנטי",
@@ -925,7 +939,8 @@ export default {
       fitToContainer: "Fit to container (maintain aspect ratio)",
       fillContainer: "Fill container (may crop image)",
     },
-    noGroup: "No group",
+    noGroup: "אין קבוצה",
+    loadingGroups: "טוען קבוצות...",
     darkMode: "Dark Mode",
     toggleTheme: "Toggle theme",
   },

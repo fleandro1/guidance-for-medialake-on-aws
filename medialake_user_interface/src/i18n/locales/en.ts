@@ -132,6 +132,15 @@ export default {
       size: "Size",
     },
   },
+  facetFilter: {
+    title: "Filters",
+    clearAll: "Clear All",
+    activeFilters: "{{count}} active filter",
+    activeFilters_other: "{{count}} active filters",
+    fileType: "File Type",
+    format: "Format",
+    noFiltersAvailable: "No filters available",
+  },
   assetExplorer: {
     noConnectorSelected: "Select a connector to view assets",
     noAssetsFound: "No assets found for this connector",
@@ -139,6 +148,10 @@ export default {
     noIndexedAssets:
       'No indexed assets were found for this connector with bucket "{{bucketName}}".',
     loadingAssets: "Loading assets...",
+    bucketNotFound: "Bucket Not Found",
+    invalidBucketName: "Invalid Bucket Name",
+    permissionDenied: "Permission Denied",
+    pageOutOfRange: "Page {{requestedPage}} is out of range. Redirecting to page {{totalPages}}.",
     menu: {
       rename: "Rename",
       share: "Share",
@@ -255,6 +268,7 @@ export default {
     },
   },
   search: {
+    clear: "Clear search",
     semantic: {
       label: "Semantic",
       enable: "Enable semantic search",
@@ -694,6 +708,7 @@ export default {
     error: "Error",
     language: "Language",
     noGroup: "No group",
+    loadingGroups: "Getting groups...",
     darkMode: "Dark Mode",
     toggleTheme: "Toggle theme",
     noUsersFound: "No users found",
