@@ -204,16 +204,13 @@ class IngestPanel(QWidget):
         # Start/Pause/Cancel buttons
         self._start_btn = QPushButton("Start Upload")
         self._start_btn.setStyleSheet(PRIMARY_BUTTON_STYLE)
+        self._start_btn.setEnabled(False)
         self._start_btn.clicked.connect(self._on_start)
         controls_layout.addWidget(self._start_btn)
 
-        self._pause_btn = QPushButton("Pause")
-        self._pause_btn.clicked.connect(self._on_pause)
-        self._pause_btn.setEnabled(False)
-        controls_layout.addWidget(self._pause_btn)
-
         self._cancel_btn = QPushButton("Cancel All")
         self._cancel_btn.setStyleSheet(DANGER_BUTTON_STYLE)
+        self._cancel_btn.setEnabled(False)
         self._cancel_btn.clicked.connect(self._on_cancel_all)
         controls_layout.addWidget(self._cancel_btn)
 
@@ -355,18 +352,9 @@ class IngestPanel(QWidget):
     def _on_start(self) -> None:
         """Handle Start Upload button click."""
         self._manager.start_uploads()
-        self._start_btn.setEnabled(False)
-        self._pause_btn.setEnabled(True)
-        self._pause_btn.setText("Pause")
-
-    def _on_pause(self) -> None:
-        """Handle Pause/Resume button click."""
-        if self._manager.is_paused:
-            self._manager.start_uploads()
-            self._pause_btn.setText("Pause")
-        else:
-            self._manager.pause_uploads()
-            self._pause_btn.setText("Resume")
+        # Only update button states if uploads actually started
+        if self._manager.active_count > 0:
+            self._start_btn.setEnabled(False)
 
     def _on_cancel_all(self) -> None:
         """Handle Cancel All button click."""
@@ -380,7 +368,6 @@ class IngestPanel(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self._manager.cancel_all()
             self._start_btn.setEnabled(True)
-            self._pause_btn.setEnabled(False)
 
     def _on_context_menu(self, pos) -> None:
         """Show context menu for table."""
@@ -434,9 +421,12 @@ class IngestPanel(QWidget):
         has_pending = pending > 0
         has_active = active > 0
 
-        if not has_active and not self._manager.is_paused:
+        self._cancel_btn.setEnabled(has_pending or has_active)
+
+        if has_active:
+            self._start_btn.setEnabled(False)
+        else:
             self._start_btn.setEnabled(has_pending)
-            self._pause_btn.setEnabled(False)
 
     def _show_toast(self, message: str) -> None:
         """Show a brief status message."""

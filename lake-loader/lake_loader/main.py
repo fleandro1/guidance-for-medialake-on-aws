@@ -17,6 +17,7 @@ from lake_loader.core.history import IngestHistory
 from lake_loader.services.auth_service import AuthService
 from lake_loader.services.api_client import MediaLakeAPIClient
 from lake_loader.services.ingest_manager import IngestManager
+from lake_loader.services.credential_manager import CredentialManager
 from lake_loader.ui.login_dialog import LoginDialog
 from lake_loader.ui.main_window import MainWindow
 from lake_loader.ui.theme import apply_dark_theme
@@ -75,6 +76,7 @@ def main() -> int:
             return 0
 
     # Create services
+    credential_manager = CredentialManager()
     auth_service = AuthService(
         user_pool_id=config.cognito_user_pool_id,
         client_id=config.cognito_client_id,
@@ -90,17 +92,29 @@ def main() -> int:
         history=history,
     )
 
-    # Show login dialog
-    login_dialog = LoginDialog(
-        config=config,
-        auth_service=auth_service,
-    )
+    # Try auto-login with stored credentials
+    username = None
+    creds = credential_manager.get_credentials()
+    if creds:
+        try:
+            auth_service.authenticate(creds[0], creds[1])
+            username = creds[0]
+        except Exception:
+            # Auto-login failed — fall through to dialog
+            pass
 
-    if login_dialog.exec() != LoginDialog.DialogCode.Accepted:
-        return 0
+    # Show login dialog if auto-login didn't succeed
+    if not username:
+        login_dialog = LoginDialog(
+            config=config,
+            auth_service=auth_service,
+            credential_manager=credential_manager,
+        )
 
-    # Get username from login
-    username = login_dialog.get_username()
+        if login_dialog.exec() != LoginDialog.DialogCode.Accepted:
+            return 0
+
+        username = login_dialog.get_username()
 
     # Create and show main window
     main_window = MainWindow(

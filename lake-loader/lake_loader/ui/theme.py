@@ -369,20 +369,20 @@ DARK_STYLESHEET = """
 # Primary action button style (for important actions like "Start", "Sign In")
 PRIMARY_BUTTON_STYLE = """
     QPushButton {
-        background-color: #00a8e8;
-        border: 1px solid #00c8ff;
+        background-color: #0078a8;
+        border: 1px solid #0088b8;
         border-radius: 5px;
         padding: 8px 24px;
-        color: white;
+        color: #e8e8e8;
         font-weight: bold;
         min-width: 100px;
     }
     QPushButton:hover {
-        background-color: #00b8f8;
-        border: 1px solid #00d8ff;
+        background-color: #0088b8;
+        border: 1px solid #0098c8;
     }
     QPushButton:pressed {
-        background-color: #0088c8;
+        background-color: #006898;
     }
     QPushButton:disabled {
         background-color: #2a2a2d;
@@ -394,18 +394,25 @@ PRIMARY_BUTTON_STYLE = """
 # Danger button style (for destructive actions)
 DANGER_BUTTON_STYLE = """
     QPushButton {
-        background-color: #dc3545;
-        border: 1px solid #e04555;
+        background-color: #6b2d2d;
+        border: 1px solid #8c4040;
         border-radius: 5px;
         padding: 8px 18px;
-        color: white;
+        color: #f5cccc;
         font-weight: 500;
     }
     QPushButton:hover {
-        background-color: #ec4555;
+        background-color: #7d3636;
+        border: 1px solid #9c4e4e;
     }
     QPushButton:pressed {
-        background-color: #cc2535;
+        background-color: #8a3c3c;
+        color: #ffe0e0;
+    }
+    QPushButton:disabled {
+        background-color: #2a2a2d;
+        color: #5a5a5d;
+        border: 1px solid #3a3a3d;
     }
 """
 

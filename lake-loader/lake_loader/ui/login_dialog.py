@@ -23,6 +23,7 @@ from lake_loader.services.auth_service import (
     AuthenticationError,
     InvalidCredentialsError,
 )
+from lake_loader.services.credential_manager import CredentialManager
 from lake_loader.ui.theme import PRIMARY_BUTTON_STYLE, ERROR_STYLE
 
 
@@ -40,18 +41,20 @@ class LoginDialog(QDialog):
         self,
         config: Config,
         auth_service: AuthService,
+        credential_manager: CredentialManager,
         parent=None,
     ):
         super().__init__(parent)
         self._config = config
         self._auth_service = auth_service
+        self._credential_manager = credential_manager
 
         self.setWindowTitle("LakeLoader - Sign In")
         self.setMinimumWidth(420)
         self.setModal(True)
 
         self._setup_ui()
-        self._load_saved_username()
+        self._load_saved_credentials()
 
     def _setup_ui(self) -> None:
         """Set up the dialog UI."""
@@ -94,9 +97,9 @@ class LoginDialog(QDialog):
         self._password_edit.returnPressed.connect(self._on_login)
         creds_layout.addRow("Password:", self._password_edit)
 
-        # Remember username checkbox
-        self._remember_checkbox = QCheckBox("Remember username")
-        self._remember_checkbox.setChecked(bool(self._config.saved_username))
+        # Remember credentials checkbox
+        self._remember_checkbox = QCheckBox("Remember credentials")
+        self._remember_checkbox.setChecked(self._credential_manager.has_credentials())
         creds_layout.addRow("", self._remember_checkbox)
 
         layout.addWidget(creds_group)
@@ -131,9 +134,15 @@ class LoginDialog(QDialog):
 
         layout.addLayout(button_layout)
 
-    def _load_saved_username(self) -> None:
-        """Load saved username from config."""
-        if self._config.saved_username:
+    def _load_saved_credentials(self) -> None:
+        """Load saved credentials from keychain."""
+        creds = self._credential_manager.get_credentials()
+        if creds:
+            self._username_edit.setText(creds[0])
+            self._password_edit.setText(creds[1])
+            self._login_button.setFocus()
+        elif self._config.saved_username:
+            # Migration: pick up old saved_username from config
             self._username_edit.setText(self._config.saved_username)
             self._password_edit.setFocus()
         else:
@@ -156,12 +165,16 @@ class LoginDialog(QDialog):
             # Attempt authentication
             self._auth_service.authenticate(username, password)
 
-            # Save username if requested
+            # Save or clear credentials
             if self._remember_checkbox.isChecked():
-                self._config.saved_username = username
+                self._credential_manager.store_credentials(username, password)
             else:
+                self._credential_manager.delete_credentials()
+
+            # Clear legacy saved_username from config
+            if self._config.saved_username:
                 self._config.saved_username = ""
-            self._config.save()
+                self._config.save()
 
             # Success
             self.login_successful.emit()

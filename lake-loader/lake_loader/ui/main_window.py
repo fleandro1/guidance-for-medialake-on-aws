@@ -17,6 +17,7 @@ from lake_loader.core.config import Config
 from lake_loader.core.history import IngestHistory
 from lake_loader.core.models import IngestTask, IngestStatus, ConnectorInfo
 from lake_loader.services.auth_service import AuthService
+from lake_loader.services.credential_manager import CredentialManager
 from lake_loader.services.api_client import MediaLakeAPIClient
 from lake_loader.services.ingest_manager import IngestManager
 from lake_loader.ui.ingest_panel import IngestPanel
@@ -156,6 +157,7 @@ class MainWindow(QMainWindow):
             login_dialog = LoginDialog(
                 config=temp_config,
                 auth_service=temp_auth,
+                credential_manager=CredentialManager(),
                 parent=dialog,
             )
             login_dialog.setWindowTitle("Test Connection - Login")
