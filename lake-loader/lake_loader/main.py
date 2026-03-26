@@ -38,9 +38,13 @@ def main() -> int:
 
     # Set Fusion style (required for proper dark theme)
     app.setStyle("Fusion")
-    
+
     # Apply dark theme matching DaVinci Resolve
     apply_dark_theme(app)
+
+    # Set application icon (shows in macOS dock, taskbar, window title bar)
+    from lake_loader.resources import get_app_icon
+    app.setWindowIcon(get_app_icon())
 
     # Load or create config
     try:

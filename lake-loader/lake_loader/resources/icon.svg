@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#20232a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1d;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#004e72;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#002b40;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="arrowGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#0095cc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0095cc;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00b4e0;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#0078a8;stop-opacity:0" />
+    </linearGradient>
+    <clipPath id="roundClip">
+      <rect width="512" height="512" rx="96" ry="96"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad)"/>
+
+  <!-- Clipped water and glow -->
+  <g clip-path="url(#roundClip)">
+    <!-- Subtle glow behind arrow, sitting above water -->
+    <ellipse cx="256" cy="300" rx="90" ry="105" fill="url(#glowGrad)"/>
+
+    <!-- Water body — fills bottom ~38% -->
+    <path d="M 0,328 C 85,298 170,358 256,328 C 342,298 427,358 512,328 L 512,512 L 0,512 Z"
+          fill="url(#waterGrad)"/>
+
+    <!-- Water surface highlight line -->
+    <path d="M 0,328 C 85,298 170,358 256,328 C 342,298 427,358 512,328"
+          fill="none" stroke="#0099cc" stroke-width="3.5" opacity="0.7"/>
+
+    <!-- Second wave further down -->
+    <path d="M 0,370 C 85,350 170,390 256,370 C 342,350 427,390 512,370"
+          fill="none" stroke="#0088b0" stroke-width="2.5" opacity="0.4"/>
+
+    <!-- Deep shine / reflection lines in water -->
+    <line x1="168" y1="420" x2="215" y2="420" stroke="#00aadd" stroke-width="6" stroke-linecap="round" opacity="0.18"/>
+    <line x1="290" y1="440" x2="355" y2="440" stroke="#00aadd" stroke-width="6" stroke-linecap="round" opacity="0.13"/>
+    <line x1="130" y1="465" x2="180" y2="465" stroke="#00aadd" stroke-width="4" stroke-linecap="round" opacity="0.10"/>
+  </g>
+
+  <!-- Upload arrow — arrowhead (triangle) -->
+  <polygon points="256,127 173,268 340,268" fill="url(#arrowGrad)"/>
+
+  <!-- Upload arrow — shaft, overlapping water to read as "going in" -->
+  <rect x="226" y="258" width="60" height="141" rx="10" fill="url(#arrowGrad)"/>
+
+  <!-- Shine / specular highlight on arrow -->
+  <ellipse cx="239" cy="190" rx="12" ry="29" fill="white" opacity="0.20" transform="rotate(-14 239 190)"/>
+
+  <!-- Border ring -->
+  <rect width="512" height="512" rx="96" fill="none" stroke="url(#borderGrad)" stroke-width="4" opacity="0.55"/>
+</svg>

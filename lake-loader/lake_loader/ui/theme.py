@@ -435,17 +435,17 @@ ERROR_STYLE = """
 # Drop zone style
 DROP_ZONE_STYLE = """
     QFrame {
-        background-color: #2b2b2b;
-        border: 2px dashed #555555;
-        border-radius: 8px;
+        background-color: #1e1e20;
+        border: 1px solid #3a3a3d;
+        border-radius: 6px;
     }
 """
 
 DROP_ZONE_HIGHLIGHT_STYLE = """
     QFrame {
-        background-color: #1e3a4d;
-        border: 2px dashed #00a8e8;
-        border-radius: 8px;
+        background-color: #1a2e3d;
+        border: 2px dashed #0088b8;
+        border-radius: 6px;
     }
 """
 

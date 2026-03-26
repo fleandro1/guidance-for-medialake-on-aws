@@ -53,6 +53,9 @@ lake-loader-gui = "lake_loader.main:main"
 where = ["."]
 include = ["lake_loader*"]
 
+[tool.setuptools.package-data]
+lake_loader = ["resources/*.svg", "resources/*.png"]
+
 [tool.black]
 line-length = 100
 target-version = ['py310', 'py311', 'py312']
