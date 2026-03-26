@@ -54,7 +54,7 @@ class DropArea(QFrame):
         layout = QVBoxLayout(self)
         
         # Label for empty state
-        self._label = QLabel("Drag files here or use 'Add Selected from Media Pool' button")
+        self._label = QLabel("Use 'Add Selected from Media Pool' button")
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setWordWrap(True)
         self._label.setStyleSheet("""
@@ -419,7 +419,7 @@ class DropArea(QFrame):
         if not self._dropped_files:
             self._label.setVisible(True)
             self._file_list.setVisible(False)
-            self._label.setText("Drag files here or use 'Add Selected from Media Pool' button")
+            self._label.setText("Use 'Add Selected from Media Pool' button")
             return
         
         # Hide label and show file list
@@ -589,7 +589,7 @@ class UploadPanel(QWidget):
         
         # Instructions label
         instructions_label = QLabel(
-            "Drag files from Finder/Explorer, or select clips in Media Pool and click the button above"
+            "Select clips in Media Pool and click the button above"
         )
         instructions_label.setStyleSheet("color: #666; font-style: italic;")
         instructions_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

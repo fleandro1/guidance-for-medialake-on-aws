@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QStackedWidget,
 )
-from PySide6.QtCore import Qt, Signal, QUrl, QTimer
+from PySide6.QtCore import Qt, QUrl, QTimer
 from PySide6.QtGui import QPixmap, QImage
 
 from medialake_resolve.core.models import Asset, MediaType
@@ -258,13 +258,7 @@ else:
 
 
 class PreviewPanel(QWidget):
-    """Panel for showing asset preview and details.
-    
-    Signals:
-        download_requested: Emitted when download is requested. (asset, variant)
-    """
-    
-    download_requested = Signal(Asset, str)
+    """Panel for showing asset preview and details."""
     
     def __init__(self, parent: Optional[QWidget] = None):
         """Initialize preview panel.
@@ -334,24 +328,6 @@ class PreviewPanel(QWidget):
         details_scroll.setWidget(self._details_content)
         details_layout.addWidget(details_scroll, 1)  # Give it stretch to expand
         
-        # Add spacing between info and buttons
-        details_layout.addSpacing(16)
-        
-        # Action buttons
-        buttons_layout = QHBoxLayout()
-        
-        self._download_button = QPushButton("Download Original")
-        self._download_button.clicked.connect(self._on_download_original)
-        self._download_button.setEnabled(False)
-        buttons_layout.addWidget(self._download_button)
-        
-        self._download_proxy_button = QPushButton("Download Proxy")
-        self._download_proxy_button.clicked.connect(self._on_download_proxy)
-        self._download_proxy_button.setEnabled(False)
-        buttons_layout.addWidget(self._download_proxy_button)
-        
-        details_layout.addLayout(buttons_layout)
-        
         layout.addWidget(details_frame)
     
     def set_asset(self, asset: Asset) -> None:
@@ -372,9 +348,7 @@ class PreviewPanel(QWidget):
         details = self._format_details(asset)
         self._details_content.setText(details)
         
-        # Enable download buttons
-        self._download_button.setEnabled(True)
-        self._download_proxy_button.setEnabled(asset.has_proxy)
+        # Download is handled by main window's action bar
         
         # Default to image preview (will show thumbnail)
         # Video will play if we have a preview URL and multimedia is available
@@ -418,8 +392,6 @@ class PreviewPanel(QWidget):
         self._video_preview.stop()
         self._name_label.setText("")
         self._details_content.setText("")
-        self._download_button.setEnabled(False)
-        self._download_proxy_button.setEnabled(False)
         self._preview_stack.setCurrentIndex(0)
     
     def _format_details(self, asset: Asset) -> str:
@@ -465,13 +437,3 @@ class PreviewPanel(QWidget):
             lines.append(f"<b>Tags:</b> {', '.join(asset.tags)}")
         
         return "<br>".join(lines)
-    
-    def _on_download_original(self) -> None:
-        """Handle download original button."""
-        if self._current_asset:
-            self.download_requested.emit(self._current_asset, "original")
-    
-    def _on_download_proxy(self) -> None:
-        """Handle download proxy button."""
-        if self._current_asset:
-            self.download_requested.emit(self._current_asset, "proxy")

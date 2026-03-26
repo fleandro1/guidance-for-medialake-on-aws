@@ -1,13 +1,12 @@
 """Search panel with keyword and semantic search support."""
 
-from typing import Optional, List
+from typing import Optional
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QLineEdit,
     QPushButton,
-    QComboBox,
     QLabel,
     QCheckBox,
     QCompleter,
@@ -18,25 +17,20 @@ from PySide6.QtCore import Qt, Signal, QStringListModel, QTimer, QPropertyAnimat
 from PySide6.QtGui import QIcon, QPainter, QColor, QPen
 
 from medialake_resolve.core.config import Config
-from medialake_resolve.core.models import Collection, MediaType
 
 
 class SearchPanel(QWidget):
-    """Search panel with filters for Media Lake assets.
+    """Search panel for Media Lake assets.
     
     Features:
     - Search input with history/autocomplete
     - Toggle between keyword and semantic search
-    - Collection filter dropdown
-    - Media type filter
     
     Signals:
-        search_requested: Emitted when search is triggered. (query, search_type, collection_id, media_type)
-        filters_changed: Emitted when filters change.
+        search_requested: Emitted when search is triggered. (query, search_type)
     """
     
-    search_requested = Signal(str, str, str, str)  # query, search_type, collection_id, media_type
-    filters_changed = Signal()
+    search_requested = Signal(str, str)  # query, search_type
     
     def __init__(self, config: Config, parent: Optional[QWidget] = None):
         """Initialize search panel.
@@ -48,7 +42,6 @@ class SearchPanel(QWidget):
         super().__init__(parent)
         
         self._config = config
-        self._collections: List[Collection] = []
         
         # Create a timer for debouncing slider changes
         self._confidence_timer = QTimer(self)
@@ -112,38 +105,6 @@ class SearchPanel(QWidget):
         
         layout.addLayout(search_row)
         
-        # Filters row
-        filters_row = QHBoxLayout()
-        filters_row.setSpacing(8)
-        
-        # Collection filter
-        filters_row.addWidget(QLabel("Collection:"))
-        self._collection_combo = QComboBox()
-        self._collection_combo.setMinimumWidth(150)
-        self._collection_combo.addItem("All Collections", "")
-        self._collection_combo.currentIndexChanged.connect(self._on_filter_changed)
-        filters_row.addWidget(self._collection_combo)
-        
-        # Media type filter
-        filters_row.addWidget(QLabel("Type:"))
-        self._media_type_combo = QComboBox()
-        self._media_type_combo.setMinimumWidth(100)
-        self._media_type_combo.addItem("All Types", "")
-        self._media_type_combo.addItem("Video", MediaType.VIDEO.value)
-        self._media_type_combo.addItem("Audio", MediaType.AUDIO.value)
-        self._media_type_combo.addItem("Image", MediaType.IMAGE.value)
-        self._media_type_combo.currentIndexChanged.connect(self._on_filter_changed)
-        filters_row.addWidget(self._media_type_combo)
-        
-        filters_row.addStretch()
-        
-        # Clear filters button
-        self._clear_filters_button = QPushButton("Clear Filters")
-        self._clear_filters_button.clicked.connect(self._clear_filters)
-        filters_row.addWidget(self._clear_filters_button)
-        
-        layout.addLayout(filters_row)
-        
         # Setup search history completer
         self._history_model = QStringListModel(self)
         self._completer = QCompleter(self._history_model, self)
@@ -160,33 +121,6 @@ class SearchPanel(QWidget):
         """Load search history from config."""
         self._history_model.setStringList(self._config.search_history)
     
-    def set_collections(self, collections: List[Collection]) -> None:
-        """Update the collections dropdown.
-        
-        Args:
-            collections: List of available collections.
-        """
-        self._collections = collections
-        
-        # Remember current selection
-        current_id = self._collection_combo.currentData()
-        
-        # Clear and repopulate
-        self._collection_combo.clear()
-        self._collection_combo.addItem("All Collections", "")
-        
-        for collection in collections:
-            self._collection_combo.addItem(
-                collection.name,
-                collection.collection_id,
-            )
-        
-        # Restore selection if still valid
-        if current_id:
-            index = self._collection_combo.findData(current_id)
-            if index >= 0:
-                self._collection_combo.setCurrentIndex(index)
-    
     def get_current_query(self) -> str:
         """Get the current search query.
         
@@ -202,24 +136,6 @@ class SearchPanel(QWidget):
             "keyword" or "semantic".
         """
         return "semantic" if self._semantic_checkbox.isChecked() else "keyword"
-    
-    def get_collection_filter(self) -> Optional[str]:
-        """Get the selected collection ID.
-        
-        Returns:
-            Collection ID or None for all collections.
-        """
-        collection_id = self._collection_combo.currentData()
-        return collection_id if collection_id else None
-    
-    def get_media_type_filter(self) -> Optional[str]:
-        """Get the selected media type.
-        
-        Returns:
-            Media type value or None for all types.
-        """
-        media_type = self._media_type_combo.currentData()
-        return media_type if media_type else None
     
     def set_search_query(self, query: str) -> None:
         """Set the search query.
@@ -245,8 +161,6 @@ class SearchPanel(QWidget):
         self.search_requested.emit(
             query,
             self.get_search_type(),
-            self.get_collection_filter() or "",
-            self.get_media_type_filter() or "",
         )
     
     def set_loading(self, loading: bool) -> None:
@@ -261,17 +175,9 @@ class SearchPanel(QWidget):
         else:
             self._search_button.setText("Search")
     
-    def _on_filter_changed(self) -> None:
-        """Handle filter changed."""
-        self.filters_changed.emit()
-    
-    def _clear_filters(self) -> None:
-        """Clear all filters."""
+    def clear_search(self) -> None:
+        """Clear the search input."""
         self._search_input.clear()
-        self._collection_combo.setCurrentIndex(0)
-        self._media_type_combo.setCurrentIndex(0)
-        self._semantic_checkbox.setChecked(False)
-        self.filters_changed.emit()
     
     def focus_search(self) -> None:
         """Focus the search input."""

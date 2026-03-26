@@ -21,7 +21,7 @@ from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QAction, QIcon
 
 from medialake_resolve.core.config import Config
-from medialake_resolve.core.models import Asset, Collection, SearchResult, AssetVariant, MediaType
+from medialake_resolve.core.models import Asset, SearchResult, AssetVariant
 from medialake_resolve.core.errors import ResolveNotRunningError
 from medialake_resolve.auth.credential_manager import CredentialManager
 from medialake_resolve.auth.auth_service import AuthService
@@ -64,7 +64,6 @@ class MainWindow(QMainWindow):
         self._current_page = 1
         self._total_pages = 1
         self._loading = False
-        self._collections: List[Collection] = []
         
         # Thumbnail cache for preview panel
         self._thumbnail_cache: Dict[str, bytes] = {}
@@ -154,6 +153,48 @@ class MainWindow(QMainWindow):
         
         browse_layout.addWidget(splitter, 1)
         
+        # Action bar for download buttons (at bottom of browse area)
+        action_bar = QWidget()
+        action_bar.setStyleSheet(
+            "background-color: #2a2a2d; border-top: 1px solid #444;"
+        )
+        action_layout = QHBoxLayout(action_bar)
+        action_layout.setContentsMargins(8, 6, 8, 6)
+        action_layout.setSpacing(8)
+        
+        # Selection info label
+        self._selection_label = QLabel("No assets selected")
+        self._selection_label.setStyleSheet("color: #888; font-size: 12px;")
+        action_layout.addWidget(self._selection_label)
+        
+        action_layout.addStretch()
+        
+        # Download originals button
+        self._download_button = QPushButton("Download Originals")
+        self._download_button.setEnabled(False)
+        self._download_button.clicked.connect(self._download_selected)
+        self._download_button.setStyleSheet(
+            "QPushButton { padding: 6px 16px; background-color: #3a3a3d; "
+            "border: 1px solid #555; border-radius: 4px; color: #ddd; } "
+            "QPushButton:hover { background-color: #4a4a4d; } "
+            "QPushButton:disabled { color: #666; background-color: #2a2a2d; }"
+        )
+        
+        action_layout.addWidget(self._download_button)
+        
+        # Download proxy button
+        self._download_proxy_button = QPushButton("Download Proxies")
+        self._download_proxy_button.setEnabled(False)
+        self._download_proxy_button.clicked.connect(self._download_selected_proxies)
+        self._download_proxy_button.setStyleSheet(
+            "QPushButton { padding: 6px 16px; background-color: #3a3a3d; "
+            "border: 1px solid #555; border-radius: 4px; color: #ddd; } "
+            "QPushButton:hover { background-color: #4a4a4d; } "
+            "QPushButton:disabled { color: #666; background-color: #2a2a2d; }"
+        )
+        action_layout.addWidget(self._download_proxy_button)
+        browse_layout.addWidget(action_bar)
+        
         # Upload tab
         self._upload_panel = UploadPanel(self._config)
         
@@ -223,42 +264,9 @@ class MainWindow(QMainWindow):
             "background-color: #2a2a2d; border-radius: 4px;"
         )
         toolbar.addWidget(self._connection_label)
-        
+
         toolbar.addSeparator()
-        
-        # Connect button
-        self._connect_button = QPushButton("Connect")
-        self._connect_button.clicked.connect(self._show_login_dialog)
-        toolbar.addWidget(self._connect_button)
-        
-        # Spacer
-        spacer = QWidget()
-        spacer.setSizePolicy(
-            spacer.sizePolicy().horizontalPolicy(),
-            spacer.sizePolicy().verticalPolicy(),
-        )
-        toolbar.addWidget(spacer)
-        
-        # Download selected button
-        self._download_button = QPushButton("Download Selected")
-        self._download_button.setEnabled(False)
-        self._download_button.clicked.connect(self._download_selected)
-        toolbar.addWidget(self._download_button)
-        
-        # Download proxy button
-        self._download_proxy_button = QPushButton("Download Proxies")
-        self._download_proxy_button.setEnabled(False)
-        self._download_proxy_button.clicked.connect(self._download_selected_proxies)
-        toolbar.addWidget(self._download_proxy_button)
-        
-        # # Upload selected button
-        # self._upload_button = QPushButton("Upload Selected")
-        # self._upload_button.setEnabled(False)
-        # self._upload_button.clicked.connect(self._upload_selected)
-        # toolbar.addWidget(self._upload_button)
-        
-        toolbar.addSeparator()
-        
+
         # Resolve status
         self._resolve_label = QLabel("Resolve: Not connected")
         self._resolve_label.setStyleSheet(
@@ -266,6 +274,18 @@ class MainWindow(QMainWindow):
             "background-color: #2a2a2d; border-radius: 4px;"
         )
         toolbar.addWidget(self._resolve_label)
+
+        toolbar.addSeparator()
+
+        # Connect button
+        self._connect_button = QPushButton("Connect")
+        self._connect_button.clicked.connect(self._show_login_dialog)
+        toolbar.addWidget(self._connect_button)
+        
+        
+        
+        
+        
     
     def _create_status_bar(self) -> None:
         """Create the status bar."""
@@ -318,7 +338,6 @@ class MainWindow(QMainWindow):
         
         # Search panel
         self._search_panel.search_requested.connect(self._on_search)
-        self._search_panel.filters_changed.connect(self._on_filters_changed)
         
         # Browser view
         self._browser_view.asset_selected.connect(self._on_asset_selected)
@@ -327,9 +346,6 @@ class MainWindow(QMainWindow):
         self._browser_view.load_more_requested.connect(self._load_more_assets)
         self._browser_view.page_changed.connect(self._on_page_changed)
         self._browser_view.page_size_changed.connect(self._on_page_size_changed)
-        
-        # Preview panel
-        self._preview_panel.download_requested.connect(self._on_download_requested)
         
         # Upload panel
         self._upload_panel.upload_requested.connect(self._on_upload_requested)
@@ -412,7 +428,6 @@ class MainWindow(QMainWindow):
         )
         
         # Connect API client signals
-        self._api_client.collections_loaded.connect(self._on_collections_loaded)
         self._api_client.assets_loaded.connect(self._on_assets_loaded)
         self._api_client.search_completed.connect(self._on_search_completed)
         self._api_client.thumbnail_loaded.connect(self._on_thumbnail_loaded)
@@ -451,7 +466,6 @@ class MainWindow(QMainWindow):
         self._connect_to_resolve()
         
         # Load initial data (connectors loaded lazily when upload tab is accessed)
-        self._api_client.get_collections()
         self._load_assets()
     
     def _disconnect(self) -> None:
@@ -482,7 +496,6 @@ class MainWindow(QMainWindow):
         
         self._browser_view.set_assets([])
         self._preview_panel.clear()
-        self._search_panel.set_collections([])
     
     def _connect_to_resolve(self) -> None:
         """Try to connect to DaVinci Resolve."""
@@ -534,16 +547,10 @@ class MainWindow(QMainWindow):
         self._current_page = 1
         self._set_status("Loading assets...")
         
-        collection_id = self._search_panel.get_collection_filter()
-        media_type_str = self._search_panel.get_media_type_filter()
-        media_type = MediaType(media_type_str) if media_type_str else None
-        
         page_size = self._browser_view.get_page_size()
         
         # Use browse_assets (search-based) instead of get_assets due to /assets endpoint issues
         self._api_client.browse_assets(
-            collection_id=collection_id,
-            media_type=media_type,
             page=1,
             page_size=page_size,
         )
@@ -559,30 +566,17 @@ class MainWindow(QMainWindow):
         self._loading = True
         self._current_page += 1
         
-        collection_id = self._search_panel.get_collection_filter()
-        media_type_str = self._search_panel.get_media_type_filter()
-        media_type = MediaType(media_type_str) if media_type_str else None
-        
         page_size = self._browser_view.get_page_size()
         
         # Use browse_assets (search-based) instead of get_assets due to /assets endpoint issues
         self._api_client.browse_assets(
-            collection_id=collection_id,
-            media_type=media_type,
             page=self._current_page,
             page_size=page_size,
         )
     
-    def _on_search(self, query: str, search_type: str, collection_id: Optional[str], media_type: Optional[str]) -> None:
+    def _on_search(self, query: str, search_type: str) -> None:
         """Handle search request."""
-        print(f"\n=== SEARCH TRIGGERED ===")
-        print(f"  Query: '{query}'")
-        print(f"  Search Type: {search_type}")
-        print(f"  Collection: {collection_id}")
-        print(f"  Media Type: {media_type}")
-        
         if not self._api_client:
-            print("  ERROR: No API client!")
             return
         
         self._loading = True
@@ -592,28 +586,14 @@ class MainWindow(QMainWindow):
         self._search_loading_indicator.setVisible(True)
         self._set_status(f"Searching for '{query}'...")
         
-        media_type_enum = None
-        if media_type:
-            from medialake_resolve.core.models import MediaType
-            try:
-                media_type_enum = MediaType(media_type)
-            except ValueError:
-                pass
-        
         page_size = self._browser_view.get_page_size()
         
         self._api_client.search(
             query=query,
             search_type=search_type,
-            collection_id=collection_id or None,
-            media_type=media_type_enum,
             page=1,
             page_size=page_size,
         )
-    
-    def _on_filters_changed(self) -> None:
-        """Handle filter changes."""
-        self._load_assets()
     
     def _on_page_changed(self, page: int) -> None:
         """Handle page change from browser view."""
@@ -630,33 +610,16 @@ class MainWindow(QMainWindow):
         if query:
             # Re-run search for the new page
             search_type = self._search_panel.get_search_type()
-            collection_id = self._search_panel.get_collection_filter()
-            media_type_str = self._search_panel.get_media_type_filter()
-            
-            media_type_enum = None
-            if media_type_str:
-                try:
-                    media_type_enum = MediaType(media_type_str)
-                except ValueError:
-                    pass
             
             self._api_client.search(
                 query=query,
                 search_type=search_type,
-                collection_id=collection_id or None,
-                media_type=media_type_enum,
                 page=page,
                 page_size=page_size,
             )
         else:
             # Browse assets
-            collection_id = self._search_panel.get_collection_filter()
-            media_type_str = self._search_panel.get_media_type_filter()
-            media_type = MediaType(media_type_str) if media_type_str else None
-            
             self._api_client.browse_assets(
-                collection_id=collection_id,
-                media_type=media_type,
                 page=page,
                 page_size=page_size,
             )
@@ -672,16 +635,9 @@ class MainWindow(QMainWindow):
             self._on_search(
                 query,
                 self._search_panel.get_search_type(),
-                self._search_panel.get_collection_filter(),
-                self._search_panel.get_media_type_filter(),
             )
         else:
             self._load_assets()
-    
-    def _on_collections_loaded(self, collections: List[Collection]) -> None:
-        """Handle collections loaded."""
-        self._collections = collections
-        self._search_panel.set_collections(collections)
     
     def _on_assets_loaded(self, assets: List[Asset], total_count: int) -> None:
         """Handle assets loaded."""
@@ -774,16 +730,21 @@ class MainWindow(QMainWindow):
     def _on_selection_changed(self, selected_assets: List[Asset]) -> None:
         """Handle selection changed."""
         count = len(selected_assets)
+        
+        # Update selection label
+        if count == 0:
+            self._selection_label.setText("No assets selected")
+            self._preview_panel.clear()
+        elif count == 1:
+            self._selection_label.setText(f"1 asset selected")
+        else:
+            self._selection_label.setText(f"{count} assets selected")
+        
+        # Enable/disable download buttons
         self._download_button.setEnabled(count > 0)
         self._download_proxy_button.setEnabled(
             count > 0 and any(a.has_proxy for a in selected_assets)
         )
-        self._upload_button.setEnabled(count > 0)
-    
-    def _on_download_requested(self, asset: Asset, variant: str) -> None:
-        """Handle download request from preview panel."""
-        variant_enum = AssetVariant.PROXY if variant == "proxy" else AssetVariant.ORIGINAL
-        self._download_asset(asset, variant_enum)
     
     def _download_selected(self) -> None:
         """Download selected assets."""
@@ -1462,7 +1423,6 @@ class MainWindow(QMainWindow):
     def _refresh(self) -> None:
         """Refresh the current view."""
         if self._api_client:
-            self._api_client.get_collections()
             self._load_assets()
     
     def _set_status(self, message: str) -> None:
