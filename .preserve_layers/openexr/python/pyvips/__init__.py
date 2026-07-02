@@ -204,11 +204,11 @@ from .base import *
 from .enums import *
 from .gobject import *
 from .gvalue import *
-from .vconnection import *
-from .vimage import *
-from .vinterpolate import *
 from .vobject import *
 from .voperation import *
+from .vimage import *
+from .vinterpolate import *
+from .vconnection import *
 from .vregion import *
 from .vsource import *
 from .vsourcecustom import *

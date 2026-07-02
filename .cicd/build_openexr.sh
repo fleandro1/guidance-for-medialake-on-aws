@@ -101,6 +101,37 @@ docker run --rm \
       --no-deps \
       'pyvips>=3,<4'
 
+    # Fix pyvips circular import: vconnection.py references pyvips.VipsObject
+    # but __init__.py imports vconnection before vobject (where VipsObject is
+    # defined). Reorder so vobject and voperation come before vconnection.
+    echo 'Patching pyvips __init__.py import order (circular import fix)...'
+    INIT_FILE=/asset-output/python/pyvips/__init__.py
+    if grep -q 'from \\.vconnection' \$INIT_FILE && grep -n 'from \\.vobject' \$INIT_FILE | grep -q '^[0-9]*:' ; then
+      # Get line numbers
+      VCONN_LINE=\$(grep -n 'from \\.vconnection import' \$INIT_FILE | head -1 | cut -d: -f1)
+      VOBJ_LINE=\$(grep -n 'from \\.vobject import' \$INIT_FILE | head -1 | cut -d: -f1)
+      VOPER_LINE=\$(grep -n 'from \\.voperation import' \$INIT_FILE | head -1 | cut -d: -f1)
+      # Only patch if vconnection appears before vobject (the broken order)
+      if [ \"\$VCONN_LINE\" -lt \"\$VOBJ_LINE\" ]; then
+        # Delete original vobject and voperation lines, then insert them before vconnection
+        sed -i \"\${VOBJ_LINE}d\" \$INIT_FILE
+        # After deletion, line numbers shift — re-find
+        VOPER_LINE=\$(grep -n 'from \\.voperation import' \$INIT_FILE | head -1 | cut -d: -f1)
+        sed -i \"\${VOPER_LINE}d\" \$INIT_FILE
+        # Re-find vconnection line
+        VCONN_LINE=\$(grep -n 'from \\.vconnection import' \$INIT_FILE | head -1 | cut -d: -f1)
+        # Insert vobject and voperation before vconnection
+        sed -i \"\${VCONN_LINE}i\\from .vobject import *\" \$INIT_FILE
+        VCONN_LINE=\$((VCONN_LINE + 1))
+        sed -i \"\${VCONN_LINE}i\\from .voperation import *\" \$INIT_FILE
+        echo 'Successfully patched pyvips import order'
+      else
+        echo 'pyvips import order already correct'
+      fi
+    else
+      echo 'WARNING: Could not locate pyvips import lines'
+    fi
+
     echo 'Cleanup to reduce size...'
     cd /asset-output
 
