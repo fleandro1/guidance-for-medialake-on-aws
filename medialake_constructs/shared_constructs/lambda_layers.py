@@ -543,6 +543,22 @@ class OpenEXRLayer(Construct):
                           --no-deps \
                           'pyvips>=3,<4'
 
+                        # Fix pyvips circular import: vconnection references
+                        # pyvips.VipsObject but __init__.py imports vconnection
+                        # before vobject (where VipsObject lives). Reorder.
+                        python3.12 -c "
+import pathlib
+init = pathlib.Path('/asset-output/python/pyvips/__init__.py')
+content = init.read_text()
+old = 'from .vconnection import *\nfrom .vimage import *\nfrom .vinterpolate import *\nfrom .vobject import *\nfrom .voperation import *'
+new = 'from .vobject import *\nfrom .voperation import *\nfrom .vimage import *\nfrom .vinterpolate import *\nfrom .vconnection import *'
+if old in content:
+    init.write_text(content.replace(old, new))
+    print('Patched pyvips import order')
+else:
+    print('WARNING: pyvips import block not found (may already be fixed)')
+"
+
                         cd /asset-output
 
                         # Remove numpy from this layer. numpy is provided by the
